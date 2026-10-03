@@ -277,6 +277,7 @@ function bindControls() {
 
   $('rate-down').addEventListener('click', () => changeRate(stepRate(state.rate, -1)));
   $('rate-up').addEventListener('click', () => changeRate(stepRate(state.rate, 1)));
+  $('rate-value').addEventListener('click', () => changeRate(DEFAULT_RATE));
 
   for (const btn of document.querySelectorAll('[data-preroll]')) {
     btn.addEventListener('click', () => {
