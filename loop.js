@@ -7,8 +7,6 @@ export const RATE_MIN = 0.5;
 export const RATE_MAX = 1;
 export const RATE_STEP = 0.05;
 export const DEFAULT_RATE = 1;
-export const PREROLLS = [0, 1, 2, 3];
-export const DEFAULT_PREROLL = 1;
 export const REWIND_SECONDS = 3;
 export const EMPTY_RANGE = Object.freeze({ a: null, b: null });
 
@@ -67,10 +65,6 @@ export function nudgeB(range, delta, duration) {
 
 export function shouldJump(time, range) {
   return range.a != null && range.b != null && time >= range.b;
-}
-
-export function loopTarget(a, preroll) {
-  return round2(Math.max(0, a - preroll));
 }
 
 export function stepRate(rate, direction) {

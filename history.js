@@ -1,6 +1,6 @@
-// 再生履歴。動画ごとにタイトルと A/B・速度・助走を覚え、新しい順に並べる。
-// 履歴は { videoId, title, a, b, rate, preroll, openedAt } の配列(先頭が最新)。
-import { DEFAULT_PREROLL, DEFAULT_RATE, PREROLLS, isValidRate, parseVideoId, setB } from './loop.js';
+// 再生履歴。動画ごとにタイトルと A/B・速度を覚え、新しい順に並べる。
+// 履歴は { videoId, title, a, b, rate, openedAt } の配列(先頭が最新)。
+import { DEFAULT_RATE, isValidRate, parseVideoId, setB } from './loop.js';
 
 export const HISTORY_LIMIT = 30;
 const TITLE_MAX = 200;
@@ -18,7 +18,6 @@ export function sanitizeSettings(raw) {
     a,
     b,
     rate: isValidRate(raw.rate) ? raw.rate : DEFAULT_RATE,
-    preroll: PREROLLS.includes(raw.preroll) ? raw.preroll : DEFAULT_PREROLL,
   };
 }
 
@@ -50,7 +49,7 @@ export function openVideo(history, videoId, now) {
   const existing = history.find((e) => e.videoId === videoId);
   const entry = existing
     ? { ...existing, openedAt: now }
-    : { videoId, title: '', a: null, b: null, rate: DEFAULT_RATE, preroll: DEFAULT_PREROLL, openedAt: now };
+    : { videoId, title: '', a: null, b: null, rate: DEFAULT_RATE, openedAt: now };
   const rest = history.filter((e) => e.videoId !== videoId);
   return { history: [entry, ...rest].slice(0, HISTORY_LIMIT), entry };
 }

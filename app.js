@@ -1,11 +1,9 @@
 import {
-  DEFAULT_PREROLL,
   DEFAULT_RATE,
   EMPTY_RANGE,
   NUDGE,
   RATE_MAX,
   RATE_MIN,
-  loopTarget,
   nudgeA,
   nudgeB,
   parseVideoId,
@@ -35,7 +33,7 @@ const storage = (() => {
   }
 })();
 
-const state = { videoId: null, range: EMPTY_RANGE, rate: DEFAULT_RATE, preroll: DEFAULT_PREROLL };
+const state = { videoId: null, range: EMPTY_RANGE, rate: DEFAULT_RATE };
 let history = [];
 let player = null;
 let lastJumpAt = 0;
@@ -65,17 +63,17 @@ function formatDate(ms) {
   return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
 }
 
-// 今の動画の A/B・速度・助走を、履歴のその動画の項目に上書き保存する
+// 今の動画の A/B・速度を、履歴のその動画の項目に上書き保存する
 function persist() {
-  const { videoId, range, rate, preroll } = state;
+  const { videoId, range, rate } = state;
   if (!videoId) return;
-  history = updateEntry(history, videoId, { a: range.a, b: range.b, rate, preroll });
+  history = updateEntry(history, videoId, { a: range.a, b: range.b, rate });
   saveHistory(storage, history);
 }
 
 function describeEntry(entry) {
   const range = entry.a == null ? '区間なし' : `A ${formatTime(entry.a)}〜B ${formatTime(entry.b)}`;
-  return `${range} / ${Math.round(entry.rate * 100)}% / 助走${entry.preroll}s`;
+  return `${range} / ${Math.round(entry.rate * 100)}%`;
 }
 
 function renderHistory() {
@@ -111,9 +109,6 @@ function renderControls() {
   $('rate-value').textContent = `${Math.round(state.rate * 100)}%`;
   $('rate-down').disabled = state.rate <= RATE_MIN;
   $('rate-up').disabled = state.rate >= RATE_MAX;
-  for (const btn of document.querySelectorAll('[data-preroll]')) {
-    btn.setAttribute('aria-pressed', String(Number(btn.dataset.preroll) === state.preroll));
-  }
 }
 
 function renderPosition() {
@@ -157,7 +152,7 @@ function changeRate(rate) {
 }
 
 function jumpToLoopStart() {
-  player.seek(loopTarget(state.range.a, state.preroll));
+  player.seek(state.range.a);
   lastJumpAt = performance.now();
 }
 
@@ -165,7 +160,6 @@ function applyEntry(entry) {
   state.videoId = entry.videoId;
   state.range = { a: entry.a, b: entry.b };
   state.rate = entry.rate;
-  state.preroll = entry.preroll;
   $('url').value = `https://youtu.be/${entry.videoId}`;
 }
 
@@ -173,7 +167,7 @@ function loadVideo(videoId) {
   const opened = openVideo(history, videoId, Date.now());
   history = opened.history;
   saveHistory(storage, history);
-  // 履歴にある動画なら前回の A/B・速度・助走を戻す。初めての動画なら初期設定(前の動画の A/B は持ち込まない)
+  // 履歴にある動画なら前回の A/B・速度を戻す。初めての動画なら初期設定(前の動画の A/B は持ち込まない)
   applyEntry(opened.entry);
   player.load(videoId);
   player.setRate(state.rate);
@@ -278,14 +272,6 @@ function bindControls() {
   $('rate-down').addEventListener('click', () => changeRate(stepRate(state.rate, -1)));
   $('rate-up').addEventListener('click', () => changeRate(stepRate(state.rate, 1)));
   $('rate-value').addEventListener('click', () => changeRate(DEFAULT_RATE));
-
-  for (const btn of document.querySelectorAll('[data-preroll]')) {
-    btn.addEventListener('click', () => {
-      state.preroll = Number(btn.dataset.preroll);
-      persist();
-      renderControls();
-    });
-  }
 
   $('seek').addEventListener('click', (e) => {
     const duration = player.duration();

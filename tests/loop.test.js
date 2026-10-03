@@ -8,7 +8,6 @@ import {
   nudgeA,
   nudgeB,
   shouldJump,
-  loopTarget,
   stepRate,
   isValidRate,
   rewind,
@@ -131,13 +130,6 @@ test('shouldJump: A と B が揃っていて B 以上のときだけ true', () =
   assert.equal(shouldJump(7.99, { a: 5, b: 8 }), false);
   assert.equal(shouldJump(8, { a: 5, b: 8 }), true);
   assert.equal(shouldJump(9, { a: 5, b: 8 }), true);
-});
-
-test('loopTarget: A から助走ぶん手前。0 より前には行かない', () => {
-  assert.equal(loopTarget(10, 1), 9);
-  assert.equal(loopTarget(10, 0), 10);
-  assert.equal(loopTarget(0.5, 2), 0);
-  assert.equal(loopTarget(3.3, 1), 2.3);
 });
 
 test('stepRate: 5% ずつ変え、50〜100% の外には出ない', () => {

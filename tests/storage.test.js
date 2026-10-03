@@ -28,7 +28,7 @@ const withRaw = (value) => memoryStorage({ [STORAGE_KEY]: typeof value === 'stri
 // --- 旧形式(最後の状態 1 件)の読み込み。履歴への引き継ぎに使う ---
 
 test('旧形式の状態をそのまま読み込める', () => {
-  const state = { videoId: ID, a: 12.3, b: 18.7, rate: 0.85, preroll: 2 };
+  const state = { videoId: ID, a: 12.3, b: 18.7, rate: 0.85 };
   assert.deepEqual(loadState(withRaw(state)), state);
 });
 
@@ -48,23 +48,22 @@ test('壊れた JSON は null', () => {
 });
 
 test('動画 ID が不正なら null', () => {
-  assert.equal(loadState(withRaw({ videoId: 'short', a: 1, b: 2, rate: 1, preroll: 1 })), null);
-  assert.equal(loadState(withRaw({ videoId: 123, a: 1, b: 2, rate: 1, preroll: 1 })), null);
+  assert.equal(loadState(withRaw({ videoId: 'short', a: 1, b: 2, rate: 1 })), null);
+  assert.equal(loadState(withRaw({ videoId: 123, a: 1, b: 2, rate: 1 })), null);
 });
 
-test('範囲外の速度と助走は初期値に戻す', () => {
+test('範囲外の速度は初期値に戻し、以前の助走の値は捨てる', () => {
   assert.deepEqual(loadState(withRaw({ videoId: ID, a: null, b: null, rate: 3, preroll: 7 })), {
     videoId: ID,
     a: null,
     b: null,
     rate: 1,
-    preroll: 1,
   });
 });
 
 test('不正な A は A と B の両方を消す', () => {
   for (const a of [-1, '5', Number.NaN, null]) {
-    const loaded = loadState(withRaw({ videoId: ID, a, b: 8, rate: 1, preroll: 1 }));
+    const loaded = loadState(withRaw({ videoId: ID, a, b: 8, rate: 1 }));
     assert.equal(loaded.a, null, String(a));
     assert.equal(loaded.b, null, String(a));
   }
@@ -72,7 +71,7 @@ test('不正な A は A と B の両方を消す', () => {
 
 test('A との間隔が 0.1 秒未満の B や、数値でない B は消す', () => {
   for (const b of [4, 5.05, '8', null]) {
-    const loaded = loadState(withRaw({ videoId: ID, a: 5, b, rate: 1, preroll: 1 }));
+    const loaded = loadState(withRaw({ videoId: ID, a: 5, b, rate: 1 }));
     assert.equal(loaded.a, 5, String(b));
     assert.equal(loaded.b, null, String(b));
   }
@@ -80,7 +79,7 @@ test('A との間隔が 0.1 秒未満の B や、数値でない B は消す', (
 
 // --- 履歴 ---
 
-const historyEntry = { videoId: ID, title: '曲', a: 1, b: 2, rate: 0.9, preroll: 0, openedAt: 1000 };
+const historyEntry = { videoId: ID, title: '曲', a: 1, b: 2, rate: 0.9, openedAt: 1000 };
 
 test('履歴を保存して、そのまま読み込める', () => {
   const storage = memoryStorage();
@@ -104,16 +103,16 @@ test('壊れた履歴は空の配列', () => {
 });
 
 test('履歴がなく旧形式の状態があれば、それを履歴の 1 件目として引き継ぐ', () => {
-  const storage = withRaw({ videoId: ID, a: 3, b: 4, rate: 0.75, preroll: 2 });
+  const storage = withRaw({ videoId: ID, a: 3, b: 4, rate: 0.75 });
   assert.deepEqual(loadHistory(storage, 5000), [
-    { videoId: ID, a: 3, b: 4, rate: 0.75, preroll: 2, title: '', openedAt: 5000 },
+    { videoId: ID, a: 3, b: 4, rate: 0.75, title: '', openedAt: 5000 },
   ]);
 });
 
 test('履歴があれば旧形式の状態は使わない', () => {
   const storage = memoryStorage({
     [HISTORY_KEY]: JSON.stringify([]),
-    [STORAGE_KEY]: JSON.stringify({ videoId: ID, a: 3, b: 4, rate: 0.75, preroll: 2 }),
+    [STORAGE_KEY]: JSON.stringify({ videoId: ID, a: 3, b: 4, rate: 0.75 }),
   });
   assert.deepEqual(loadHistory(storage, 5000), []);
 });

@@ -24,7 +24,7 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 既定: スマホ縦(幅 600px 未満)。1 カラム、操作ボタン 5 段 */
+/* 既定: スマホ縦(幅 600px 未満)。1 カラム、操作ボタン 4 段 */
 body {
   min-height: 100dvh;
   display: flex;
@@ -48,7 +48,6 @@ button {
 }
 button:active { background: var(--btn-active); }
 button:disabled { opacity: 0.35; }
-button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
 
 .media { display: flex; flex-direction: column; gap: var(--gap); }
 
@@ -88,15 +87,13 @@ button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
   display: grid;
   gap: var(--gap);
   grid-auto-rows: minmax(var(--btn-min), 1fr);
-  grid-template-areas: "transport" "a" "b" "rate" "preroll";
+  grid-template-areas: "transport" "a" "b" "rate";
 }
 .row { display: grid; gap: var(--gap); }
 .row-transport { grid-area: transport; grid-template-columns: 1fr 1.6fr 1fr; }
 .row-a { grid-area: a; grid-template-columns: 1.2fr 1fr 1fr; }
 .row-b { grid-area: b; grid-template-columns: 1.2fr 1fr 1fr; }
 .row-rate { grid-area: rate; grid-template-columns: 1fr 1.2fr 1fr; }
-.row-preroll { grid-area: preroll; grid-template-columns: auto repeat(4, 1fr); align-items: stretch; }
-.row-preroll .label { display: flex; align-items: center; padding: 0 6px; color: var(--muted); }
 
 .play { background: var(--accent); font-size: 28px; font-weight: 700; }
 .ab { background: var(--ab); color: #111; font-size: 26px; font-weight: 800; }
@@ -167,15 +164,15 @@ button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
 .history-meta { font-size: 14px; color: var(--muted); }
 .history-remove { min-width: var(--btn-min); font-size: 22px; }
 
-/* iPad 縦など(幅 600px 以上): A と B を 1 段に並べて 4 段 */
+/* iPad 縦など(幅 600px 以上): A と B を 1 段に並べて 3 段 */
 @media (min-width: 600px) {
   .controls {
     grid-template-columns: 1fr 1fr;
-    grid-template-areas: "transport transport" "a b" "rate rate" "preroll preroll";
+    grid-template-areas: "transport transport" "a b" "rate rate";
   }
 }
 
-/* iPad 横・PC・スマホ横(横長かつ幅 700px 以上): 左に動画、右に操作ボタン 5 段 */
+/* iPad 横・PC・スマホ横(横長かつ幅 700px 以上): 左に動画、右に操作ボタン 4 段 */
 @media (orientation: landscape) and (min-width: 700px) {
   body {
     display: grid;
@@ -187,6 +184,6 @@ button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
   .video { width: min(100%, calc((100dvh - 180px) * 16 / 9)); align-self: center; }
   .controls {
     grid-template-columns: 1fr;
-    grid-template-areas: "transport" "a" "b" "rate" "preroll";
+    grid-template-areas: "transport" "a" "b" "rate";
   }
 }

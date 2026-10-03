@@ -12,7 +12,6 @@ const entry = (videoId, extra = {}) => ({
   a: null,
   b: null,
   rate: 1,
-  preroll: 1,
   openedAt: 0,
   ...extra,
 });
@@ -24,7 +23,7 @@ test('openVideo: 初めての動画は初期設定で先頭に追加する', () 
 });
 
 test('openVideo: 履歴にある動画は設定を残したまま先頭へ移し、開いた日時を更新する', () => {
-  const saved = entry(ID2, { title: '曲B', a: 5, b: 9, rate: 0.85, preroll: 2, openedAt: 10 });
+  const saved = entry(ID2, { title: '曲B', a: 5, b: 9, rate: 0.85, openedAt: 10 });
   const { history, entry: opened } = openVideo([entry(ID1), saved, entry(ID3)], ID2, 2000);
   assert.deepEqual(opened, { ...saved, openedAt: 2000 });
   assert.deepEqual(history.map((e) => e.videoId), [ID2, ID1, ID3]);
@@ -65,6 +64,10 @@ test('sanitizeHistory: 動画 ID が不正な項目は捨て、それ以外の�
     { videoId: ID1, title: 42, a: 5, b: 4, rate: 3, preroll: 9, openedAt: 'x' },
   ];
   assert.deepEqual(sanitizeHistory(raw), [entry(ID1, { a: 5 })]);
+});
+
+test('sanitizeHistory: 以前保存した助走の値は捨てる', () => {
+  assert.deepEqual(sanitizeHistory([{ ...entry(ID1), preroll: 2 }]), [entry(ID1)]);
 });
 
 test('sanitizeHistory: 長すぎるタイトルは 200 文字で切る', () => {
