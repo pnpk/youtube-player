@@ -15,14 +15,13 @@ export function addMarker(range, markers, time) {
   return [...markers, t].sort((x, y) => x - y);
 }
 
-// A だけ押して B をまだ押していないときは、B を動画の最後にしてから区切りを足す
-// (A → 区切りを入れていく → 最後に B、という順番でも使えるように)
+// A/B が揃っていなくても区切りを足せるようにする。A が未設定なら A を動画の先頭に、
+// B が未設定なら B を動画の最後にしてから足す(区切りを入れていく → あとで A/B を決める、の順でも使えるように)
 export function placeMarker(range, markers, time, duration) {
-  if (range.a == null) return null;
   let target = range;
-  if (range.b == null) {
+  if (range.a == null || range.b == null) {
     if (!(duration > 0)) return null;
-    target = { a: range.a, b: round2(duration) };
+    target = { a: range.a ?? 0, b: range.b ?? round2(duration) };
   }
   const next = addMarker(target, markers, time);
   return next ? { range: target, markers: next } : null;

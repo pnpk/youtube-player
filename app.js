@@ -124,7 +124,8 @@ function activeRange() {
 
 function renderSections() {
   const sections = sectionsOf(state.range, state.markers);
-  $('marker-add').disabled = state.range.a == null; // B が未設定でも、A があれば押せる(B は動画の最後になる)
+  // A/B が未設定でも押せる(A は動画の先頭、B は動画の最後になる)
+  $('marker-add').disabled = !state.videoId;
   $('marker-remove').disabled = state.markers.length === 0;
   const chips = sections.length > 1 ? [null, ...sections.map((_, i) => i)] : [];
   $('section-chips').replaceChildren(

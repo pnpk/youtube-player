@@ -87,8 +87,13 @@ test('placeMarker: B が設定済みなら A-B はそのままで区切りを足
   assert.deepEqual(placeMarker({ a: 2, b: 10 }, [4], 6, 60), { range: { a: 2, b: 10 }, markers: [4, 6] });
 });
 
-test('placeMarker: A が未設定、動画の長さが不明、または区切りを置けない位置なら null', () => {
-  assert.equal(placeMarker({ a: null, b: null }, [], 5, 60), null);
+test('placeMarker: A も未設定なら、A を動画の先頭・B を動画の最後にしてから区切りを足す', () => {
+  assert.deepEqual(placeMarker({ a: null, b: null }, [], 5, 60), { range: { a: 0, b: 60 }, markers: [5] });
+});
+
+test('placeMarker: 動画の長さが不明、または区切りを置けない位置なら null', () => {
+  assert.equal(placeMarker({ a: null, b: null }, [], 5, 0), null);
+  assert.equal(placeMarker({ a: null, b: null }, [], 0.05, 60), null);
   assert.equal(placeMarker({ a: 2, b: null }, [], 5, 0), null);
   assert.equal(placeMarker({ a: 2, b: null }, [], 1, 60), null);
   assert.equal(placeMarker({ a: 2, b: 10 }, [], 12, 60), null);
