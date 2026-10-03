@@ -1,0 +1,8 @@
+{
+  "name": "youtube-player",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
