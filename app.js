@@ -15,6 +15,7 @@ import {
 } from './loop.js';
 import { PLAYER_STATE, createPlayer, isPlayingState } from './player.js';
 import { openVideo, removeEntry, updateEntry } from './history.js';
+import { MAX_MARKERS, addMarker, findSection, loopRange, pruneMarkers, removeNearestMarker, sectionsOf } from './sections.js';
 import { loadHistory, saveHistory } from './storage.js';
 
 const TICK_MS = 50;
@@ -33,9 +34,12 @@ const storage = (() => {
   }
 })();
 
-const state = { videoId: null, range: EMPTY_RANGE, rate: DEFAULT_RATE };
+// selected: ループしている区間の番号(null なら A-B 全体)
+const state = { videoId: null, range: EMPTY_RANGE, rate: DEFAULT_RATE, markers: [], selected: null };
 let history = [];
 let player = null;
+// 再生バーを指でスライドしている間の位置(秒)。スライドしていないときは null
+let dragTime = null;
 let lastJumpAt = 0;
 let toastTimer = 0;
 
@@ -63,17 +67,18 @@ function formatDate(ms) {
   return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
 }
 
-// 今の動画の A/B・速度を、履歴のその動画の項目に上書き保存する
+// 今の動画の A/B・速度・区切りを、履歴のその動画の項目に上書き保存する
 function persist() {
-  const { videoId, range, rate } = state;
+  const { videoId, range, rate, markers } = state;
   if (!videoId) return;
-  history = updateEntry(history, videoId, { a: range.a, b: range.b, rate });
+  history = updateEntry(history, videoId, { a: range.a, b: range.b, rate, markers });
   saveHistory(storage, history);
 }
 
 function describeEntry(entry) {
   const range = entry.a == null ? '区間なし' : `A ${formatTime(entry.a)}〜B ${formatTime(entry.b)}`;
-  return `${range} / ${Math.round(entry.rate * 100)}%`;
+  const markers = entry.markers.length ? ` / 区切り${entry.markers.length}` : '';
+  return `${range} / ${Math.round(entry.rate * 100)}%${markers}`;
 }
 
 function renderHistory() {
@@ -109,20 +114,56 @@ function renderControls() {
   $('rate-value').textContent = `${Math.round(state.rate * 100)}%`;
   $('rate-down').disabled = state.rate <= RATE_MIN;
   $('rate-up').disabled = state.rate >= RATE_MAX;
+  renderSections();
+}
+
+// 今ループしている範囲(区間を選んでいればその区間、なければ A-B 全体)
+function activeRange() {
+  return loopRange(state.range, state.markers, state.selected);
+}
+
+function renderSections() {
+  const sections = sectionsOf(state.range, state.markers);
+  $('marker-add').disabled = sections.length === 0;
+  $('marker-remove').disabled = state.markers.length === 0;
+  const chips = sections.length > 1 ? [null, ...sections.map((_, i) => i)] : [];
+  $('section-chips').replaceChildren(
+    ...chips.map((index) => {
+      const chip = document.createElement('button');
+      chip.dataset.section = index ?? '';
+      chip.textContent = index == null ? '全体' : String(index + 1);
+      chip.setAttribute('aria-pressed', String(index === state.selected));
+      return chip;
+    }),
+  );
+  // 再生バーの区切りの線(位置は renderPosition で動画の長さに合わせて決める)
+  $('seek-marks').replaceChildren(
+    ...state.markers.map(() => {
+      const mark = document.createElement('div');
+      mark.className = 'seek-mark';
+      return mark;
+    }),
+  );
 }
 
 function renderPosition() {
   const duration = player ? player.duration() : 0;
-  const time = player ? player.time() : 0;
+  const time = dragTime ?? (player ? player.time() : 0);
   $('time').textContent = formatTime(time);
   const head = $('seek-head');
   const rangeEl = $('seek-range');
+  const sectionEl = $('seek-section');
+  const percent = (t) => `${(t / duration) * 100}%`;
+  sectionEl.hidden = true;
   if (!duration) {
     head.style.left = '0%';
     rangeEl.hidden = true;
     return;
   }
-  head.style.left = `${(time / duration) * 100}%`;
+  head.style.left = percent(time);
+  [...$('seek-marks').children].forEach((mark, i) => {
+    mark.style.left = percent(state.markers[i]);
+  });
   const { a, b } = state.range;
   if (a == null) {
     rangeEl.hidden = true;
@@ -131,16 +172,30 @@ function renderPosition() {
   // B が未設定のときは A の位置に細い印だけを出す
   const end = b ?? a;
   rangeEl.hidden = false;
-  rangeEl.style.left = `${(a / duration) * 100}%`;
-  rangeEl.style.width = `max(3px, ${((end - a) / duration) * 100}%)`;
+  rangeEl.style.left = percent(a);
+  rangeEl.style.width = `max(3px, ${percent(end - a)})`;
+  if (state.selected != null) {
+    const section = activeRange();
+    sectionEl.hidden = false;
+    sectionEl.style.left = percent(section.a);
+    sectionEl.style.width = percent(section.b - section.a);
+  }
+}
+
+// 区切りや A/B が変わっても、選んでいた区間と同じ位置から始まる区間があれば選び続ける
+function setLoop(range, markers) {
+  const start = state.selected == null ? null : activeRange().a;
+  state.range = range;
+  state.markers = pruneMarkers(range, markers);
+  state.selected = start == null ? null : findSection(state.range, state.markers, start);
+  persist();
+  renderControls();
+  renderPosition();
 }
 
 function updateRange(next) {
   if (next === state.range) return;
-  state.range = next;
-  persist();
-  renderControls();
-  renderPosition();
+  setLoop(next, state.markers);
 }
 
 function changeRate(rate) {
@@ -152,7 +207,7 @@ function changeRate(rate) {
 }
 
 function jumpToLoopStart() {
-  player.seek(state.range.a);
+  player.seek(activeRange().a);
   lastJumpAt = performance.now();
 }
 
@@ -160,6 +215,8 @@ function applyEntry(entry) {
   state.videoId = entry.videoId;
   state.range = { a: entry.a, b: entry.b };
   state.rate = entry.rate;
+  state.markers = entry.markers;
+  state.selected = null; // どの区間を選んでいたかは保存しない
   $('url').value = `https://youtu.be/${entry.videoId}`;
 }
 
@@ -167,7 +224,7 @@ function loadVideo(videoId) {
   const opened = openVideo(history, videoId, Date.now());
   history = opened.history;
   saveHistory(storage, history);
-  // 履歴にある動画なら前回の A/B・速度を戻す。初めての動画なら初期設定(前の動画の A/B は持ち込まない)
+  // 履歴にある動画なら前回の A/B・速度・区切りを戻す。初めての動画なら初期設定(前の動画の A/B は持ち込まない)
   applyEntry(opened.entry);
   player.load(videoId);
   player.setRate(state.rate);
@@ -193,7 +250,7 @@ function handleStateChange(playerState) {
   // 読み込み直後に設定した速度が効かないことがあるので、再生が始まるたびに当て直す
   if (playerState === PLAYER_STATE.PLAYING) player.setRate(state.rate);
   // B が動画の終端付近だと、監視より先に動画が終わるので、ここでもループさせる
-  if (playerState === PLAYER_STATE.ENDED && state.range.a != null && state.range.b != null) {
+  if (playerState === PLAYER_STATE.ENDED && activeRange().a != null && activeRange().b != null) {
     jumpToLoopStart();
     player.play();
   }
@@ -244,7 +301,7 @@ function bindControls() {
   $('play').addEventListener('click', () => (player.isPlaying() ? player.pause() : player.play()));
   $('rewind').addEventListener('click', () => player.seek(rewind(player.time())));
   $('to-a').addEventListener('click', () => {
-    if (state.range.a == null) return;
+    if (activeRange().a == null) return;
     jumpToLoopStart();
     player.play();
   });
@@ -273,16 +330,62 @@ function bindControls() {
   $('rate-up').addEventListener('click', () => changeRate(stepRate(state.rate, 1)));
   $('rate-value').addEventListener('click', () => changeRate(DEFAULT_RATE));
 
-  $('seek').addEventListener('click', (e) => {
-    const duration = player.duration();
-    if (!duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    player.seek(((e.clientX - rect.left) / rect.width) * duration);
+  $('marker-add').addEventListener('click', () => {
+    const next = addMarker(state.range, state.markers, player.time());
+    if (next) {
+      setLoop(state.range, next);
+    } else if (state.markers.length >= MAX_MARKERS) {
+      showToast(`区切りは ${MAX_MARKERS} 個までです`);
+    } else {
+      showToast('A と B の間で押してください');
+    }
+  });
+  $('marker-remove').addEventListener('click', () => {
+    setLoop(state.range, removeNearestMarker(state.markers, player.time()));
+  });
+  $('section-chips').addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-section]');
+    if (!chip) return;
+    state.selected = chip.dataset.section === '' ? null : Number(chip.dataset.section);
+    renderControls();
+    jumpToLoopStart();
+    player.play();
+  });
+
+  bindSeekDrag();
+}
+
+// 再生バー: 指を置いてスライドしている間は表示だけ動かし、離した位置へ移動する(タップでも移動できる)
+function bindSeekDrag() {
+  const seek = $('seek');
+  const timeAt = (clientX) => {
+    const rect = seek.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    return ratio * player.duration();
+  };
+  seek.addEventListener('pointerdown', (e) => {
+    if (!player.duration()) return;
+    seek.setPointerCapture(e.pointerId);
+    dragTime = timeAt(e.clientX);
+    renderPosition();
+  });
+  seek.addEventListener('pointermove', (e) => {
+    if (dragTime == null) return;
+    dragTime = timeAt(e.clientX);
+    renderPosition();
+  });
+  seek.addEventListener('pointerup', () => {
+    if (dragTime == null) return;
+    player.seek(dragTime);
+    dragTime = null;
+  });
+  seek.addEventListener('pointercancel', () => {
+    dragTime = null;
   });
 }
 
 function tick() {
-  if (shouldJump(player.time(), state.range) && performance.now() - lastJumpAt > JUMP_GUARD_MS) {
+  if (shouldJump(player.time(), activeRange()) && performance.now() - lastJumpAt > JUMP_GUARD_MS) {
     jumpToLoopStart();
   }
   renderPosition();

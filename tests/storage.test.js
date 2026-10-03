@@ -29,7 +29,7 @@ const withRaw = (value) => memoryStorage({ [STORAGE_KEY]: typeof value === 'stri
 
 test('旧形式の状態をそのまま読み込める', () => {
   const state = { videoId: ID, a: 12.3, b: 18.7, rate: 0.85 };
-  assert.deepEqual(loadState(withRaw(state)), state);
+  assert.deepEqual(loadState(withRaw(state)), { ...state, markers: [] });
 });
 
 test('何も保存されていなければ null', () => {
@@ -58,6 +58,7 @@ test('範囲外の速度は初期値に戻し、以前の助走の値は捨て�
     a: null,
     b: null,
     rate: 1,
+    markers: [],
   });
 });
 
@@ -79,7 +80,7 @@ test('A との間隔が 0.1 秒未満の B や、数値でない B は消す', (
 
 // --- 履歴 ---
 
-const historyEntry = { videoId: ID, title: '曲', a: 1, b: 2, rate: 0.9, openedAt: 1000 };
+const historyEntry = { videoId: ID, title: '曲', a: 1, b: 2, rate: 0.9, markers: [1.5], openedAt: 1000 };
 
 test('履歴を保存して、そのまま読み込める', () => {
   const storage = memoryStorage();
@@ -105,7 +106,7 @@ test('壊れた履歴は空の配列', () => {
 test('履歴がなく旧形式の状態があれば、それを履歴の 1 件目として引き継ぐ', () => {
   const storage = withRaw({ videoId: ID, a: 3, b: 4, rate: 0.75 });
   assert.deepEqual(loadHistory(storage, 5000), [
-    { videoId: ID, a: 3, b: 4, rate: 0.75, title: '', openedAt: 5000 },
+    { videoId: ID, a: 3, b: 4, rate: 0.75, markers: [], title: '', openedAt: 5000 },
   ]);
 });
 

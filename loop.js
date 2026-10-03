@@ -14,8 +14,9 @@ const VIDEO_ID = /^[\w-]{11}$/;
 const EPSILON = 1e-9;
 
 // ±0.1 や ±5% を繰り返しても誤差が溜まらないよう、0.01 単位に丸める
-const round2 = (x) => Math.round(x * 100) / 100;
-const gapOk = (a, b) => round2(b - a) >= MIN_GAP - EPSILON;
+export const round2 = (x) => Math.round(x * 100) / 100;
+// a から b までが最低間隔(0.1 秒)以上あいているか
+export const gapOk = (a, b) => round2(b - a) >= MIN_GAP - EPSILON;
 
 export function parseVideoId(text) {
   const s = String(text ?? '').trim();

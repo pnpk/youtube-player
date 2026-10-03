@@ -12,6 +12,7 @@ const entry = (videoId, extra = {}) => ({
   a: null,
   b: null,
   rate: 1,
+  markers: [],
   openedAt: 0,
   ...extra,
 });
@@ -68,6 +69,16 @@ test('sanitizeHistory: 動画 ID が不正な項目は捨て、それ以外の�
 
 test('sanitizeHistory: 以前保存した助走の値は捨てる', () => {
   assert.deepEqual(sanitizeHistory([{ ...entry(ID1), preroll: 2 }]), [entry(ID1)]);
+});
+
+test('sanitizeHistory: 区切りは A-B の内側の有効なものだけ残し、時刻順に並べる', () => {
+  const [e] = sanitizeHistory([entry(ID1, { a: 0, b: 10, markers: [7, 'x', 3, 12, 3.05, null] })]);
+  assert.deepEqual(e.markers, [3, 7]);
+});
+
+test('sanitizeHistory: 区切りを持たない以前の履歴は区切りなしにする', () => {
+  const { markers, ...old } = entry(ID1, { a: 0, b: 10 });
+  assert.deepEqual(sanitizeHistory([old])[0].markers, []);
 });
 
 test('sanitizeHistory: 長すぎるタイトルは 200 文字で切る', () => {

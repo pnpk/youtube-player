@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#111111">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=5da104ee03">
+<link rel="stylesheet" href="style.css?v=19eebe429c">
 <title>練習プレーヤー</title>
 </head>
 <body>
@@ -38,6 +38,8 @@
   <div class="seek-row">
     <div id="seek" class="seek">
       <div id="seek-range" class="seek-range" hidden></div>
+      <div id="seek-section" class="seek-section" hidden></div>
+      <div id="seek-marks"></div>
       <div id="seek-head" class="seek-head"></div>
     </div>
     <button id="clear-loop" class="clear" aria-label="ループ解除" hidden>×</button>
@@ -49,7 +51,7 @@
   <div class="row row-transport">
     <button id="rewind">⟲ 3秒</button>
     <button id="play" class="play" aria-label="再生/一時停止">▶</button>
-    <button id="to-a">A に戻る</button>
+    <button id="to-a" aria-label="ループの頭に戻る">頭に戻る</button>
   </div>
   <div class="row row-a">
     <button id="set-a" class="ab">A</button>
@@ -66,6 +68,11 @@
     <button id="rate-value" class="rate-value" aria-label="速度を 100% に戻す">100%</button>
     <button id="rate-up">+5%</button>
   </div>
+  <div class="row row-sections">
+    <button id="marker-add" aria-label="今の位置に区切りを入れる">＋区切り</button>
+    <button id="marker-remove" aria-label="今の位置にいちばん近い区切りを消す">−区切り</button>
+    <div id="section-chips" class="section-chips"></div>
+  </div>
 </main>
 
 <script>window.ytReady = new Promise((resolve) => { window.onYouTubeIframeAPIReady = resolve; });</script>
@@ -74,13 +81,14 @@
 <script type="importmap">
 {
   "imports": {
-    "./history.js": "./history.js?v=5da104ee03",
-    "./loop.js": "./loop.js?v=5da104ee03",
-    "./player.js": "./player.js?v=5da104ee03",
-    "./storage.js": "./storage.js?v=5da104ee03"
+    "./history.js": "./history.js?v=19eebe429c",
+    "./loop.js": "./loop.js?v=19eebe429c",
+    "./player.js": "./player.js?v=19eebe429c",
+    "./sections.js": "./sections.js?v=19eebe429c",
+    "./storage.js": "./storage.js?v=19eebe429c"
   }
 }
 </script>
-<script type="module" src="app.js?v=5da104ee03"></script>
+<script type="module" src="app.js?v=19eebe429c"></script>
 </body>
 </html>

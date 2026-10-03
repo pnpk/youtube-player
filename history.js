@@ -1,6 +1,7 @@
-// 再生履歴。動画ごとにタイトルと A/B・速度を覚え、新しい順に並べる。
-// 履歴は { videoId, title, a, b, rate, openedAt } の配列(先頭が最新)。
+// 再生履歴。動画ごとにタイトルと A/B・速度・区切りを覚え、新しい順に並べる。
+// 履歴は { videoId, title, a, b, rate, markers, openedAt } の配列(先頭が最新)。
 import { DEFAULT_RATE, isValidRate, parseVideoId, setB } from './loop.js';
+import { addMarker } from './sections.js';
 
 export const HISTORY_LIMIT = 30;
 const TITLE_MAX = 200;
@@ -13,11 +14,16 @@ export function sanitizeSettings(raw) {
   if (typeof raw.videoId !== 'string' || parseVideoId(raw.videoId) !== raw.videoId) return null;
   const a = isTime(raw.a) ? raw.a : null;
   const b = a != null && isTime(raw.b) ? (setB({ a, b: null }, raw.b)?.b ?? null) : null;
+  // 区切りは 1 つずつ足し直して、A-B の内側・間隔・個数の条件を満たすものだけ残す
+  const markers = Array.isArray(raw.markers)
+    ? raw.markers.filter(Number.isFinite).reduce((kept, t) => addMarker({ a, b }, kept, t) ?? kept, [])
+    : [];
   return {
     videoId: raw.videoId,
     a,
     b,
     rate: isValidRate(raw.rate) ? raw.rate : DEFAULT_RATE,
+    markers,
   };
 }
 
@@ -49,7 +55,7 @@ export function openVideo(history, videoId, now) {
   const existing = history.find((e) => e.videoId === videoId);
   const entry = existing
     ? { ...existing, openedAt: now }
-    : { videoId, title: '', a: null, b: null, rate: DEFAULT_RATE, openedAt: now };
+    : { videoId, title: '', a: null, b: null, rate: DEFAULT_RATE, markers: [], openedAt: now };
   const rest = history.filter((e) => e.videoId !== videoId);
   return { history: [entry, ...rest].slice(0, HISTORY_LIMIT), entry };
 }
