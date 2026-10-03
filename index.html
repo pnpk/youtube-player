@@ -5,33 +5,65 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="練習">
+<meta name="theme-color" content="#111111">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="style.css">
 <title>練習プレーヤー</title>
-<style>
-  body { margin: 16px; font-family: -apple-system, system-ui, sans-serif; background: #111; color: #eee; }
-  form { display: flex; gap: 8px; }
-  input { flex: 1; font-size: 16px; padding: 10px; }
-  button { font-size: 16px; padding: 10px 16px; }
-  #wrap { margin-top: 12px; aspect-ratio: 16 / 9; }
-  #wrap iframe { width: 100%; height: 100%; }
-</style>
 </head>
 <body>
-<form id="f"><input id="url" placeholder="YouTube の URL を貼り付け" autocomplete="off"><button>読み込む</button></form>
-<div id="wrap"><div id="player"></div></div>
-<script>
-  let player;
-  window.onYouTubeIframeAPIReady = () => {
-    player = new YT.Player('player', { playerVars: { playsinline: 1 } });
-  };
-  document.getElementById('f').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const m = document.getElementById('url').value.match(/(?:v=|youtu\.be\/|shorts\/)([\w-]{11})/);
-    if (m && player) player.loadVideoById(m[1]);
-  });
-</script>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<section class="media">
+  <form id="load-form" class="load-form">
+    <input id="url" type="text" inputmode="url" placeholder="YouTube の URL を貼り付け" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button type="submit">読み込む</button>
+  </form>
+  <div class="video"><div id="player"></div></div>
+  <div class="seek-row">
+    <div id="seek" class="seek">
+      <div id="seek-range" class="seek-range" hidden></div>
+      <div id="seek-head" class="seek-head"></div>
+    </div>
+    <button id="clear-loop" class="clear" aria-label="ループ解除" hidden>×</button>
+  </div>
+  <div class="readout"><span id="time">0:00.0</span><span id="ab-label">A — / B —</span></div>
+</section>
+
+<main class="controls">
+  <div class="row row-transport">
+    <button id="rewind">⟲ 3秒</button>
+    <button id="play" class="play" aria-label="再生/一時停止">▶</button>
+    <button id="to-a">A に戻る</button>
+  </div>
+  <div class="row row-a">
+    <button id="set-a" class="ab">A</button>
+    <button id="a-minus">−0.1</button>
+    <button id="a-plus">+0.1</button>
+  </div>
+  <div class="row row-b">
+    <button id="set-b" class="ab">B</button>
+    <button id="b-minus">−0.1</button>
+    <button id="b-plus">+0.1</button>
+  </div>
+  <div class="row row-rate">
+    <button id="rate-down">−5%</button>
+    <div id="rate-value" class="rate-value">100%</div>
+    <button id="rate-up">+5%</button>
+  </div>
+  <div class="row row-preroll">
+    <span class="label">助走</span>
+    <button data-preroll="0">0s</button>
+    <button data-preroll="1">1s</button>
+    <button data-preroll="2">2s</button>
+    <button data-preroll="3">3s</button>
+  </div>
+</main>
+
+<script>window.ytReady = new Promise((resolve) => { window.onYouTubeIframeAPIReady = resolve; });</script>
 <script src="https://www.youtube.com/iframe_api"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
