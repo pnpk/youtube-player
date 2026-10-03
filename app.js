@@ -15,7 +15,7 @@ import {
   shouldJump,
   stepRate,
 } from './loop.js';
-import { PLAYER_STATE, createPlayer } from './player.js';
+import { PLAYER_STATE, createPlayer, isPlayingState } from './player.js';
 import { loadState, saveState } from './storage.js';
 
 const TICK_MS = 50;
@@ -128,7 +128,7 @@ function loadVideo(videoId) {
 }
 
 function handleStateChange(playerState) {
-  $('play').textContent = playerState === PLAYER_STATE.PLAYING ? '❚❚' : '▶';
+  $('play').textContent = isPlayingState(playerState) ? '❚❚' : '▶';
   // 読み込み直後に設定した速度が効かないことがあるので、再生が始まるたびに当て直す
   if (playerState === PLAYER_STATE.PLAYING) player.setRate(state.rate);
   // B が動画の終端付近だと、監視より先に動画が終わるので、ここでもループさせる
@@ -142,18 +142,22 @@ function handleError(code) {
   showToast(ERROR_MESSAGES[code] ?? `再生できませんでした(エラー ${code})`);
 }
 
-function bindControls() {
-  $('load-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const videoId = parseVideoId($('url').value);
-    if (!videoId) {
-      showToast('URL を確認してください');
-      return;
-    }
-    $('url').blur();
-    loadVideo(videoId);
-  });
+function handleLoadSubmit(e) {
+  e.preventDefault(); // プレーヤーの準備前でも、フォーム送信でページを再読み込みさせない
+  if (!player) {
+    showToast('プレーヤーを準備中です。少し待ってからもう一度押してください');
+    return;
+  }
+  const videoId = parseVideoId($('url').value);
+  if (!videoId) {
+    showToast('URL を確認してください');
+    return;
+  }
+  $('url').blur();
+  loadVideo(videoId);
+}
 
+function bindControls() {
   $('play').addEventListener('click', () => (player.isPlaying() ? player.pause() : player.play()));
   $('rewind').addEventListener('click', () => player.seek(rewind(player.time())));
   $('to-a').addEventListener('click', () => {
@@ -217,8 +221,14 @@ async function main() {
     state.preroll = saved.preroll;
   }
   renderControls();
+  $('load-form').addEventListener('submit', handleLoadSubmit);
 
-  player = await createPlayer('player', { onError: handleError, onStateChange: handleStateChange });
+  try {
+    player = await createPlayer('player', { onError: handleError, onStateChange: handleStateChange });
+  } catch {
+    showToast('プレーヤーを読み込めませんでした。ネット接続を確認して、ページを開き直してください');
+    return;
+  }
   bindControls();
   if (state.videoId) {
     $('url').value = `https://youtu.be/${state.videoId}`;

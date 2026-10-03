@@ -17,6 +17,7 @@
 
 html, body {
   margin: 0;
+  touch-action: manipulation; /* ボタン以外(シークバーなど)をダブルタップしても画面が拡大されないように */
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, system-ui, sans-serif;
