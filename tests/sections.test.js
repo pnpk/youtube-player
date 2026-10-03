@@ -6,6 +6,7 @@ import {
   findSection,
   loopRange,
   placeMarker,
+  restartPoint,
   pruneMarkers,
   removeNearestMarker,
   sectionsOf,
@@ -91,4 +92,11 @@ test('placeMarker: A が未設定、動画の長さが不明、または区切�
   assert.equal(placeMarker({ a: 2, b: null }, [], 5, 0), null);
   assert.equal(placeMarker({ a: 2, b: null }, [], 1, 60), null);
   assert.equal(placeMarker({ a: 2, b: 10 }, [], 12, 60), null);
+});
+
+test('restartPoint: 「頭に戻る」の戻り先。区間を選んでいればその頭、なければ A、A もなければ動画の先頭', () => {
+  assert.equal(restartPoint(AB, [3, 7], 1), 3);
+  assert.equal(restartPoint({ a: 2, b: 10 }, [], null), 2);
+  assert.equal(restartPoint({ a: 2, b: null }, [], null), 2);
+  assert.equal(restartPoint({ a: null, b: null }, [], null), 0);
 });

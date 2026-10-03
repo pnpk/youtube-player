@@ -54,6 +54,11 @@ export function loopRange(range, markers, selected) {
   return sectionsOf(range, markers)[selected] ?? range;
 }
 
+// 「頭に戻る」の戻り先。今ループしている範囲の頭。A も未設定なら動画の先頭
+export function restartPoint(range, markers, selected) {
+  return loopRange(range, markers, selected).a ?? 0;
+}
+
 // 区切りを足したり消したりしたあとも、同じ位置から始まる区間を選び続けるために使う
 export function findSection(range, markers, start) {
   const index = sectionsOf(range, markers).findIndex((s) => s.a === start);

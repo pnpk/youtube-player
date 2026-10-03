@@ -15,7 +15,7 @@ import {
 } from './loop.js';
 import { PLAYER_STATE, createPlayer, isPlayingState } from './player.js';
 import { openVideo, removeEntry, updateEntry } from './history.js';
-import { MAX_MARKERS, findSection, loopRange, placeMarker, pruneMarkers, removeNearestMarker, sectionsOf } from './sections.js';
+import { MAX_MARKERS, findSection, loopRange, placeMarker, pruneMarkers, removeNearestMarker, restartPoint, sectionsOf } from './sections.js';
 import { loadHistory, saveHistory } from './storage.js';
 
 const TICK_MS = 50;
@@ -301,8 +301,8 @@ function bindControls() {
   $('play').addEventListener('click', () => (player.isPlaying() ? player.pause() : player.play()));
   $('rewind').addEventListener('click', () => player.seek(rewind(player.time())));
   $('to-a').addEventListener('click', () => {
-    if (activeRange().a == null) return;
-    jumpToLoopStart();
+    player.seek(restartPoint(state.range, state.markers, state.selected));
+    lastJumpAt = performance.now();
     player.play();
   });
 
