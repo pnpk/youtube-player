@@ -5,74 +5,126 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="練習">
-<meta name="theme-color" content="#111111">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=90f72c7a22">
+<link rel="stylesheet" href="style.css?v=cad68c7bc4">
 <title>練習プレーヤー</title>
 </head>
 <body>
+<!-- SF Symbols 風のアイコン -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.6v14.8a1 1 0 0 0 1.5.86l12.3-7.4a1 1 0 0 0 0-1.72L8.5 3.74A1 1 0 0 0 7 4.6z" fill="currentColor"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="5.5" y="4" width="4.5" height="16" rx="1.2" fill="currentColor"/><rect x="14" y="4" width="4.5" height="16" rx="1.2" fill="currentColor"/></symbol>
+  <symbol id="i-back3" viewBox="0 0 24 24"><path d="M12 4.5V2L7.5 5.5 12 9V6.5a6.5 6.5 0 1 1-6.5 6.5h-2A8.5 8.5 0 1 0 12 4.5z" fill="currentColor"/><text x="12" y="16.3" font-size="7.5" text-anchor="middle" fill="currentColor" font-family="-apple-system, system-ui, sans-serif" font-weight="700">3</text></symbol>
+  <symbol id="i-start" viewBox="0 0 24 24"><rect x="4.5" y="5" width="2.6" height="14" rx="1" fill="currentColor"/><path d="M19.5 6.3v11.4a1 1 0 0 1-1.55.83l-8.6-5.7a1 1 0 0 1 0-1.66l8.6-5.7a1 1 0 0 1 1.55.83z" fill="currentColor"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-xmark" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M8.6 8.6l6.8 6.8m0-6.8l-6.8 6.8" stroke="var(--xmark-stroke, #fff)" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
+
 <div id="toast" class="toast" role="status" hidden></div>
 
-<div id="history" class="history" role="dialog" aria-label="再生履歴" hidden>
-  <div class="history-head">
-    <h2>履歴</h2>
-    <button id="history-close" aria-label="閉じる">×</button>
+<div id="history" class="sheet-backdrop" hidden>
+  <div class="sheet" role="dialog" aria-label="再生履歴">
+    <header class="sheet-head">
+      <h2>履歴</h2>
+      <button id="history-close" class="text-button strong">完了</button>
+    </header>
+    <p id="history-empty" class="history-empty">まだ履歴はありません</p>
+    <ul id="history-list" class="history-list group"></ul>
   </div>
-  <p id="history-empty" class="history-empty">まだ履歴はありません</p>
-  <ul id="history-list" class="history-list"></ul>
 </div>
 
 <section class="media">
-  <form id="load-form" class="load-form">
-    <div class="url-field">
-      <input id="url" type="text" inputmode="url" placeholder="YouTube の URL を貼り付け" autocomplete="off" autocapitalize="off" spellcheck="false">
-      <button type="button" id="url-clear" class="url-clear" aria-label="URL を消す">×</button>
-    </div>
-    <button type="submit">読み込む</button>
-    <button type="button" id="history-open">履歴</button>
+  <form id="load-form" class="search">
+    <svg class="search-icon" aria-hidden="true"><use href="#i-link"/></svg>
+    <input id="url" type="text" inputmode="url" enterkeyhint="go" placeholder="YouTube の URL を貼り付け" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button type="button" id="url-clear" class="icon-button url-clear" aria-label="URL を消す"><svg><use href="#i-xmark"/></svg></button>
+    <button type="submit" class="text-button open-button">開く</button>
+    <button type="button" id="history-open" class="icon-button tinted" aria-label="履歴"><svg><use href="#i-clock"/></svg></button>
   </form>
+
   <div class="video"><div id="player"></div></div>
-  <div class="seek-row">
-    <div id="seek" class="seek">
-      <div id="seek-range" class="seek-range" hidden></div>
-      <div id="seek-section" class="seek-section" hidden></div>
-      <div id="seek-marks"></div>
-      <div id="seek-head" class="seek-head"></div>
+
+  <div class="group scrub">
+    <div id="seek" class="seek" aria-label="再生位置">
+      <div class="track">
+        <div id="seek-range" class="seek-range" hidden></div>
+        <div id="seek-section" class="seek-section" hidden></div>
+        <div id="seek-marks"></div>
+      </div>
+      <div id="seek-head" class="thumb"></div>
     </div>
-    <button id="clear-loop" class="clear" aria-label="ループ解除" hidden>×</button>
+    <div class="scrub-times"><span id="time">0:00.0</span><span id="duration">0:00</span></div>
   </div>
-  <div class="readout"><span id="time">0:00.0</span><span id="ab-label">A — / B —</span></div>
+
+  <div class="group transport">
+    <button id="rewind" class="icon-button tinted transport-side" aria-label="3 秒戻る"><svg><use href="#i-back3"/></svg></button>
+    <button id="play" class="play-button" aria-label="再生">
+      <svg class="icon-play"><use href="#i-play"/></svg>
+      <svg class="icon-pause"><use href="#i-pause"/></svg>
+    </button>
+    <button id="to-a" class="icon-button tinted transport-side" aria-label="ループの頭に戻る"><svg><use href="#i-start"/></svg></button>
+  </div>
 </section>
 
 <main class="controls">
-  <div class="row row-transport">
-    <button id="rewind">⟲ 3秒</button>
-    <button id="play" class="play" aria-label="再生/一時停止">▶</button>
-    <button id="to-a" aria-label="ループの頭に戻る">頭に戻る</button>
-  </div>
-  <div class="row row-a">
-    <button id="set-a" class="ab">A</button>
-    <button id="a-minus">−0.1</button>
-    <button id="a-plus">+0.1</button>
-  </div>
-  <div class="row row-b">
-    <button id="set-b" class="ab">B</button>
-    <button id="b-minus">−0.1</button>
-    <button id="b-plus">+0.1</button>
-  </div>
-  <div class="row row-rate">
-    <button id="rate-down">−5%</button>
-    <button id="rate-value" class="rate-value" aria-label="速度を 100% に戻す">100%</button>
-    <button id="rate-up">+5%</button>
-  </div>
-  <div class="row row-sections">
-    <button id="marker-add" aria-label="今の位置に区切りを入れる">＋区切り</button>
-    <button id="marker-remove" aria-label="今の位置にいちばん近い区切りを消す">−区切り</button>
-    <div id="section-chips" class="section-chips"></div>
-  </div>
+  <section class="block block-loop">
+    <div class="block-head">
+      <h3>ループ</h3>
+      <button id="clear-loop" class="text-button" hidden>解除</button>
+    </div>
+    <div class="group loop-rows">
+      <div class="row">
+        <button id="set-a" class="set-button" aria-label="今の位置を A にする">A</button>
+        <span id="a-time" class="row-value">—</span>
+        <div class="stepper">
+          <button id="a-minus" aria-label="A を 0.1 秒前へ">−</button>
+          <button id="a-plus" aria-label="A を 0.1 秒後ろへ">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <button id="set-b" class="set-button" aria-label="今の位置を B にする">B</button>
+        <span id="b-time" class="row-value">—</span>
+        <div class="stepper">
+          <button id="b-minus" aria-label="B を 0.1 秒前へ">−</button>
+          <button id="b-plus" aria-label="B を 0.1 秒後ろへ">+</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block block-rate">
+    <div class="block-head"><h3>速度</h3></div>
+    <div class="group">
+      <div class="row">
+        <button id="rate-value" class="row-value rate-value" aria-label="速度を 100% に戻す">100%</button>
+        <div class="stepper">
+          <button id="rate-down" aria-label="速度を 5% 下げる">−</button>
+          <button id="rate-up" aria-label="速度を 5% 上げる">+</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block block-sections">
+    <div class="block-head"><h3>区切り</h3></div>
+    <div class="group">
+      <div class="segment-wrap">
+        <div id="section-chips" class="segmented" role="group" aria-label="ループする区間"></div>
+        <p id="section-hint" class="section-hint">「＋ 区切り」で区間に分けられます</p>
+      </div>
+      <div class="actions">
+        <button id="marker-add" class="text-button" aria-label="今の位置に区切りを入れる">＋ 区切り</button>
+        <button id="marker-remove" class="text-button" aria-label="今の位置にいちばん近い区切りを消す">− 区切り</button>
+      </div>
+    </div>
+  </section>
 </main>
 
 <script>window.ytReady = new Promise((resolve) => { window.onYouTubeIframeAPIReady = resolve; });</script>
@@ -81,14 +133,14 @@
 <script type="importmap">
 {
   "imports": {
-    "./history.js": "./history.js?v=90f72c7a22",
-    "./loop.js": "./loop.js?v=90f72c7a22",
-    "./player.js": "./player.js?v=90f72c7a22",
-    "./sections.js": "./sections.js?v=90f72c7a22",
-    "./storage.js": "./storage.js?v=90f72c7a22"
+    "./history.js": "./history.js?v=cad68c7bc4",
+    "./loop.js": "./loop.js?v=cad68c7bc4",
+    "./player.js": "./player.js?v=cad68c7bc4",
+    "./sections.js": "./sections.js?v=cad68c7bc4",
+    "./storage.js": "./storage.js?v=cad68c7bc4"
   }
 }
 </script>
-<script type="module" src="app.js?v=90f72c7a22"></script>
+<script type="module" src="app.js?v=cad68c7bc4"></script>
 </body>
 </html>

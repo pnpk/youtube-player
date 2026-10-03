@@ -60,6 +60,12 @@ function formatTime(t) {
   return `${m}:${s}`;
 }
 
+// 動画の長さの表示用(1:07 のように秒の小数なし)
+function formatClock(t) {
+  const m = Math.floor(t / 60);
+  return `${m}:${String(Math.floor(t - m * 60)).padStart(2, '0')}`;
+}
+
 function formatDate(ms) {
   const d = new Date(ms);
   const hh = String(d.getHours()).padStart(2, '0');
@@ -99,7 +105,7 @@ function renderHistory() {
     remove.className = 'history-remove';
     remove.dataset.remove = entry.videoId;
     remove.setAttribute('aria-label', `${entry.title || entry.videoId} を履歴から消す`);
-    remove.textContent = '×';
+    remove.textContent = '削除';
     li.append(open, remove);
     return li;
   });
@@ -109,7 +115,8 @@ function renderHistory() {
 
 function renderControls() {
   const { a, b } = state.range;
-  $('ab-label').textContent = `A ${formatTime(a)} / B ${formatTime(b)}`;
+  $('a-time').textContent = formatTime(a);
+  $('b-time').textContent = formatTime(b);
   $('clear-loop').hidden = a == null && b == null;
   $('rate-value').textContent = `${Math.round(state.rate * 100)}%`;
   $('rate-down').disabled = state.rate <= RATE_MIN;
@@ -138,6 +145,7 @@ function renderSections() {
     }),
   );
   // 再生バーの区切りの線(位置は renderPosition で動画の長さに合わせて決める)
+  $('section-hint').hidden = chips.length > 0;
   $('seek-marks').replaceChildren(
     ...state.markers.map(() => {
       const mark = document.createElement('div');
@@ -151,6 +159,7 @@ function renderPosition() {
   const duration = player ? player.duration() : 0;
   const time = dragTime ?? (player ? player.time() : 0);
   $('time').textContent = formatTime(time);
+  $('duration').textContent = formatClock(duration);
   const head = $('seek-head');
   const rangeEl = $('seek-range');
   const sectionEl = $('seek-section');
@@ -247,7 +256,9 @@ function captureTitle() {
 
 function handleStateChange(playerState) {
   captureTitle();
-  $('play').textContent = isPlayingState(playerState) ? '❚❚' : '▶';
+  const playing = isPlayingState(playerState);
+  $('play').classList.toggle('playing', playing);
+  $('play').setAttribute('aria-label', playing ? '一時停止' : '再生');
   // 読み込み直後に設定した速度が効かないことがあるので、再生が始まるたびに当て直す
   if (playerState === PLAYER_STATE.PLAYING) player.setRate(state.rate);
   // B が動画の終端付近だと、監視より先に動画が終わるので、ここでもループさせる
@@ -283,6 +294,10 @@ function bindControls() {
   });
   $('history-close').addEventListener('click', () => {
     $('history').hidden = true;
+  });
+  // シートの外側(暗くなった部分)をタップしても閉じる
+  $('history').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) $('history').hidden = true;
   });
   $('history-list').addEventListener('click', (e) => {
     const remove = e.target.closest('[data-remove]');
@@ -399,6 +414,16 @@ async function main() {
   renderControls();
   renderHistory();
   $('load-form').addEventListener('submit', handleLoadSubmit);
+  // URL を貼り付けたら、「開く」を押さなくてもすぐ読み込む
+  $('url').addEventListener('paste', () => {
+    setTimeout(() => {
+      const videoId = parseVideoId($('url').value);
+      if (player && videoId) {
+        $('url').blur();
+        loadVideo(videoId);
+      }
+    });
+  });
   $('url-clear').addEventListener('click', () => {
     $('url').value = '';
     $('url').focus(); // すぐ貼り付けられるように

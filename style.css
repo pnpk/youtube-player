@@ -1,15 +1,38 @@
+/* iOS のシステムカラー。端末のライト / ダークの設定に合わせて切り替える */
 :root {
-  --bg: #111;
-  --panel: #1e1e1e;
-  --btn: #333;
-  --btn-active: #4a4a4a;
-  --text: #f2f2f2;
-  --muted: #9a9a9a;
-  --accent: #2f7de1;
-  --ab: #e1a32f;
-  --error: #c0262d;
+  color-scheme: light dark;
+  --bg: #f2f2f7;
+  --group: #fff;
+  --fill: rgba(118, 118, 128, 0.12);
+  --fill-strong: rgba(118, 118, 128, 0.2);
+  --separator: rgba(60, 60, 67, 0.18);
+  --label: #000;
+  --secondary: rgba(60, 60, 67, 0.6);
+  --tint: #007aff;
+  --tint-soft: rgba(0, 122, 255, 0.28);
+  --segment-on: #fff;
+  --thumb: #fff;
+  --hud: rgba(30, 30, 30, 0.82);
   --gap: 10px;
-  --btn-min: 56px;
+  --row: 52px;
+  --radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000;
+    --group: #1c1c1e;
+    --fill: rgba(118, 118, 128, 0.24);
+    --fill-strong: rgba(118, 118, 128, 0.32);
+    --separator: rgba(84, 84, 88, 0.6);
+    --label: #fff;
+    --secondary: rgba(235, 235, 245, 0.6);
+    --tint: #0a84ff;
+    --tint-soft: rgba(10, 132, 255, 0.35);
+    --segment-on: #636366;
+    --thumb: #f2f2f7;
+    --hud: rgba(60, 60, 64, 0.85);
+  }
 }
 
 * { box-sizing: border-box; }
@@ -17,198 +40,319 @@
 
 html, body {
   margin: 0;
-  touch-action: manipulation; /* ボタン以外(シークバーなど)をダブルタップしても画面が拡大されないように */
   background: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, system-ui, sans-serif;
+  color: var(--label);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; /* ダブルタップで画面が拡大されないように */
 }
 
-/* 既定: スマホ縦(幅 600px 未満)。1 カラム、操作ボタン 5 段 */
+/* 既定: スマホ縦(幅 600px 未満)。1 カラムで上から並べる */
 body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   gap: var(--gap);
-  padding: calc(env(safe-area-inset-top) + 10px) calc(env(safe-area-inset-right) + 12px)
-    calc(env(safe-area-inset-bottom) + 12px) calc(env(safe-area-inset-left) + 12px);
+  padding: calc(env(safe-area-inset-top) + 10px) calc(env(safe-area-inset-right) + 14px)
+    calc(env(safe-area-inset-bottom) + 12px) calc(env(safe-area-inset-left) + 14px);
 }
 
 button {
   font: inherit;
-  font-size: 20px;
-  color: var(--text);
-  background: var(--btn);
+  color: inherit;
+  background: none;
   border: 0;
-  border-radius: 14px;
-  min-height: var(--btn-min);
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
 }
-button:active { background: var(--btn-active); }
-button:disabled { opacity: 0.35; }
-button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+button:disabled { opacity: 0.35; cursor: default; }
+svg { display: block; }
 
+.group { background: var(--group); border-radius: var(--radius); }
+
+.text-button { color: var(--tint); font-size: 17px; min-height: 44px; padding: 0 6px; }
+.text-button.strong { font-weight: 600; }
+.text-button:active:not(:disabled) { opacity: 0.5; }
+
+.icon-button { display: grid; place-items: center; min-width: 44px; min-height: 44px; }
+.icon-button svg { width: 22px; height: 22px; }
+.icon-button.tinted { color: var(--tint); }
+.icon-button:active:not(:disabled) { opacity: 0.5; }
+
+/* --- 動画まわり --- */
 .media { display: flex; flex-direction: column; gap: var(--gap); }
 
-.load-form { display: flex; gap: 8px; }
-.load-form input {
-  flex: 1;
-  min-width: 0;
-  min-height: 48px;
-  padding: 0 12px;
-  font-size: 16px; /* 16px 未満だと iOS が入力時にズームする */
-  color: var(--text);
-  background: #000;
-  border: 1px solid #444;
-  border-radius: 10px;
-}
-.load-form button { min-height: 48px; padding: 0 16px; font-size: 16px; }
-.url-field { position: relative; flex: 1; min-width: 0; display: flex; }
-.url-field input { padding-right: 48px; }
-.load-form .url-clear {
-  position: absolute;
-  top: 50%;
-  right: 4px;
-  transform: translateY(-50%);
-  min-width: 40px;
-  min-height: 40px;
-  padding: 0;
-  font-size: 22px;
-  color: var(--muted);
-  background: transparent;
-}
-/* 空欄のときは × を出さない */
-.url-field input:placeholder-shown + .url-clear { display: none; }
-
-.video { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; overflow: hidden; }
-.video iframe, #player { display: block; width: 100%; height: 100%; }
-
-.seek-row { display: flex; align-items: center; gap: 8px; }
-/* 指でスライドできるように、再生バーの上では画面をスクロールさせない */
-.seek { position: relative; flex: 1; height: 36px; background: #2a2a2a; border-radius: 8px; overflow: hidden; touch-action: none; }
-.seek-range { position: absolute; top: 0; bottom: 0; background: var(--accent); opacity: 0.5; }
-.seek-section { position: absolute; top: 0; bottom: 0; background: var(--accent); }
-.seek-mark { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--ab); }
-.seek-head { position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: #fff; }
-.clear { min-height: 44px; min-width: 44px; font-size: 22px; }
-
-.readout {
-  display: flex;
-  justify-content: space-between;
-  color: var(--muted);
-  font-size: 18px;
-  font-variant-numeric: tabular-nums;
-}
-
-.controls {
-  flex: 1;
-  display: grid;
-  gap: var(--gap);
-  grid-auto-rows: minmax(var(--btn-min), 1fr);
-  grid-template-areas: "transport" "a" "b" "rate" "sections";
-}
-.row { display: grid; gap: var(--gap); }
-.row-transport { grid-area: transport; grid-template-columns: 1fr 1.6fr 1fr; }
-.row-a { grid-area: a; grid-template-columns: 1.2fr 1fr 1fr; }
-.row-b { grid-area: b; grid-template-columns: 1.2fr 1fr 1fr; }
-.row-rate { grid-area: rate; grid-template-columns: 1fr 1.2fr 1fr; }
-.row-sections { grid-area: sections; grid-template-columns: auto auto minmax(0, 1fr); }
-.row-sections > button { padding: 0 12px; font-size: 16px; }
-/* 区間が多いときは横にスクロールして選ぶ */
-.section-chips { display: flex; gap: 8px; overflow-x: auto; }
-.section-chips button { flex: 0 0 auto; min-width: var(--btn-min); padding: 0 12px; font-size: 18px; }
-
-.play { background: var(--accent); font-size: 28px; font-weight: 700; }
-.ab { background: var(--ab); color: #111; font-size: 26px; font-weight: 800; }
-.rate-value {
+/* URL 欄: iOS の検索欄の形 */
+.search {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  font-weight: 700;
-  background: var(--panel);
-  border-radius: 14px;
+  height: 44px;
+  padding: 0 4px 0 10px;
+  border-radius: 10px;
+  background: var(--fill);
+}
+.search-icon { flex: 0 0 auto; width: 18px; height: 18px; color: var(--secondary); }
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 17px; /* 16px 未満だと iOS が入力時にズームする */
+  color: var(--label);
+  background: none;
+  border: 0;
+  outline: none;
+}
+.search input::placeholder { color: var(--secondary); }
+.url-clear { --xmark-stroke: var(--group); color: var(--secondary); min-width: 36px; }
+.url-clear svg { width: 18px; height: 18px; }
+/* 空欄のときは × と「開く」を出さない */
+.search input:placeholder-shown ~ .url-clear,
+.search input:placeholder-shown ~ .open-button { display: none; }
+.open-button { padding: 0 8px; font-weight: 600; }
+
+.video { width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #000; border-radius: var(--radius); }
+.video iframe, #player { display: block; width: 100%; height: 100%; }
+
+/* 再生バー: iOS のスライダーの形。指でスライドできるよう、上では画面をスクロールさせない */
+.scrub { padding: 10px 16px 8px; }
+.seek { position: relative; height: 32px; touch-action: none; cursor: pointer; }
+.track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 6px;
+  margin-top: -3px;
+  overflow: hidden;
+  background: var(--fill-strong);
+  border-radius: 3px;
+}
+.seek-range { position: absolute; top: 0; bottom: 0; background: var(--tint-soft); }
+.seek-section { position: absolute; top: 0; bottom: 0; background: var(--tint); }
+.seek-mark { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--tint); }
+.thumb {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  background: var(--thumb);
+  border-radius: 50%;
+  box-shadow: 0 0.5px 4px rgba(0, 0, 0, 0.12), 0 6px 13px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+  pointer-events: none;
+}
+.scrub-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--secondary);
   font-variant-numeric: tabular-nums;
 }
 
+.transport { display: flex; align-items: center; justify-content: space-evenly; height: 76px; }
+.transport-side { min-width: 64px; min-height: 64px; }
+.transport-side svg { width: 30px; height: 30px; }
+.play-button {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  color: #fff;
+  background: var(--tint);
+  border-radius: 50%;
+}
+.play-button:active { opacity: 0.7; }
+.play-button svg { grid-area: 1 / 1; width: 26px; height: 26px; }
+.play-button .icon-play { margin-left: 3px; }
+.play-button .icon-pause,
+.play-button.playing .icon-play { display: none; }
+.play-button.playing .icon-pause { display: block; }
+
+/* --- 操作のカード --- */
+.controls { display: flex; flex-direction: column; gap: var(--gap); }
+.block-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  min-height: 24px;
+  padding: 0 16px 4px;
+}
+.block-head h3 { margin: 0; font-size: 13px; font-weight: 400; color: var(--secondary); }
+/* 見出しの高さは変えずに、押せる範囲だけ上下に広げる */
+.block-head .text-button { min-height: 40px; margin: -10px -8px -8px 0; padding: 0 8px; font-size: 15px; }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--row);
+  padding: 4px 8px 4px 12px;
+}
+.loop-rows .row + .row { border-top: 0.5px solid var(--separator); }
+.set-button {
+  flex: 0 0 auto;
+  min-width: 60px;
+  height: 40px;
+  font-size: 19px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--tint);
+  border-radius: 9px;
+}
+.set-button:active { opacity: 0.7; }
+.row-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+.rate-value { font-size: 22px; font-weight: 600; min-height: 40px; }
+.rate-value:active { opacity: 0.5; }
+
+/* ステッパー(− / +) */
+.stepper { display: flex; flex: 0 0 auto; height: 40px; overflow: hidden; background: var(--fill); border-radius: 9px; }
+.stepper button { width: 56px; font-size: 24px; font-weight: 300; }
+.stepper button + button { border-left: 0.5px solid var(--separator); }
+.stepper button:active:not(:disabled) { background: var(--fill-strong); }
+
+/* 区切り: セグメントで区間を選ぶ */
+.segment-wrap { padding: 8px; }
+.segmented {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  overflow-x: auto;
+  background: var(--fill);
+  border-radius: 9px;
+  scrollbar-width: none;
+}
+.segmented:empty { display: none; }
+.segmented button { flex: 1 0 44px; min-width: 44px; height: 36px; padding: 0 10px; font-size: 15px; white-space: nowrap; border-radius: 7px; }
+.segmented button[aria-pressed="true"] {
+  font-weight: 600;
+  background: var(--segment-on);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 3px 1px rgba(0, 0, 0, 0.04);
+}
+.section-hint { margin: 0; padding: 8px 4px; font-size: 15px; color: var(--secondary); }
+.actions { display: flex; border-top: 0.5px solid var(--separator); }
+.actions .text-button { flex: 1; min-height: var(--row); }
+.actions .text-button + .text-button { border-left: 0.5px solid var(--separator); }
+
+/* --- メッセージ: 画面上部の半透明のカプセル --- */
 .toast {
   position: fixed;
   top: calc(env(safe-area-inset-top) + 12px);
   left: 50%;
-  transform: translateX(-50%);
   z-index: 30;
   max-width: calc(100% - 32px);
-  padding: 12px 18px;
-  font-size: 17px;
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 500;
   color: #fff;
-  background: var(--error);
-  border-radius: 12px;
+  background: var(--hud);
+  border-radius: 999px;
+  transform: translateX(-50%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
-/* 履歴: 画面全体に重ねて表示する */
-.history {
+/* --- 履歴: 下から出るシート --- */
+.sheet-backdrop {
   position: fixed;
   inset: 0;
   z-index: 20;
   display: flex;
-  flex-direction: column;
-  gap: var(--gap);
-  padding: calc(env(safe-area-inset-top) + 10px) calc(env(safe-area-inset-right) + 12px)
-    calc(env(safe-area-inset-bottom) + 12px) calc(env(safe-area-inset-left) + 12px);
-  background: var(--bg);
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
 }
-.history-head { display: flex; align-items: center; justify-content: space-between; }
-.history-head h2 { margin: 0; font-size: 22px; }
-.history-head button { min-width: var(--btn-min); font-size: 24px; }
-.history-empty { margin: 0; color: var(--muted); }
-.history-list {
-  flex: 1;
+.sheet {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  list-style: none;
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+  height: calc(100dvh - env(safe-area-inset-top) - 24px);
+  padding: 8px 16px calc(env(safe-area-inset-bottom) + 16px);
+  background: var(--bg);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2);
 }
-.history-list li { display: flex; gap: 8px; }
+.sheet-head { position: relative; display: flex; align-items: center; justify-content: center; min-height: 48px; }
+.sheet-head h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.sheet-head .text-button { position: absolute; right: 0; }
+.history-empty { margin: 0; padding: 24px 0; text-align: center; color: var(--secondary); }
+.history-list { margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.history-list:empty { display: none; }
+.history-list li { display: flex; align-items: center; }
+.history-list li + li { border-top: 0.5px solid var(--separator); }
 .history-item {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: center;
-  gap: 4px;
-  padding: 10px 14px;
+  gap: 3px;
+  min-height: 60px;
+  padding: 10px 16px;
   text-align: left;
 }
-.history-title { max-width: 100%; overflow: hidden; font-size: 18px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.history-meta { font-size: 14px; color: var(--muted); }
-.history-remove { min-width: var(--btn-min); font-size: 22px; }
+.history-item:active { background: var(--fill); }
+.history-title { max-width: 100%; overflow: hidden; font-size: 17px; text-overflow: ellipsis; white-space: nowrap; }
+.history-meta { font-size: 13px; color: var(--secondary); }
+.history-remove { min-height: 44px; padding: 0 16px; font-size: 15px; color: #ff3b30; }
+@media (prefers-color-scheme: dark) { .history-remove { color: #ff453a; } }
 
-/* iPad 縦など(幅 600px 以上): A と B を 1 段に並べて 4 段 */
+/* iPad 縦など(幅 600px 以上): A と B を横に並べ、その下に速度と区切りを左右に並べる */
 @media (min-width: 600px) {
-  .controls {
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas: "transport transport" "a b" "rate rate" "sections sections";
-  }
+  :root { --row: 60px; --gap: 14px; }
+  body { padding-left: calc(env(safe-area-inset-left) + 20px); padding-right: calc(env(safe-area-inset-right) + 20px); }
+  .controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "loop loop" "rate sections"; align-items: start; }
+  .block-loop { grid-area: loop; }
+  .block-rate { grid-area: rate; }
+  .block-sections { grid-area: sections; }
+  .loop-rows { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .loop-rows .row + .row { border-top: 0; border-left: 0.5px solid var(--separator); }
+  .transport { height: 88px; }
+  .play-button { width: 68px; height: 68px; }
 }
 
-/* iPad 横・PC・スマホ横(横長かつ幅 700px 以上): 左に動画、右に操作ボタン 5 段 */
+/* iPad 横・PC・スマホ横(横長かつ幅 700px 以上): 左に動画、右に操作のカード */
 @media (orientation: landscape) and (min-width: 700px) {
   body {
     display: grid;
-    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    align-items: start;
+    column-gap: 18px;
   }
-  .media { justify-content: center; }
-  /* 動画が画面の高さに収まるように幅を抑える(URL 欄・シークバー・時刻表示・余白ぶんの 180px を引く) */
-  .video { width: min(100%, calc((100dvh - 180px) * 16 / 9)); align-self: center; }
-  .controls {
-    grid-template-columns: 1fr;
-    grid-template-areas: "transport" "a" "b" "rate" "sections";
-  }
+  .media { min-height: 0; }
+  /* 動画が画面の高さに収まるように幅を抑える(URL 欄・再生バー・再生ボタン・余白ぶんを引く) */
+  .video { width: min(100%, calc((100dvh - 250px) * 16 / 9)); align-self: center; }
+  .controls { display: flex; flex-direction: column; align-items: stretch; }
+  .loop-rows { display: block; }
+  .loop-rows .row + .row { border-left: 0; border-top: 0.5px solid var(--separator); }
+}
+
+/* 背の低い横長の画面(スマホ横): 行を詰めて全部を画面に収める */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root { --row: 46px; --gap: 8px; }
+  .transport { height: 60px; }
+  .transport-side { min-width: 52px; min-height: 52px; }
+  .play-button { width: 50px; height: 50px; }
+  .video { width: min(100%, calc((100dvh - 212px) * 16 / 9)); }
+  .scrub { padding: 4px 16px 4px; }
+  .set-button, .stepper { height: 36px; }
+  .block-head { min-height: 18px; }
+  .segment-wrap { padding: 6px; }
+  .segmented button { height: 32px; }
 }
