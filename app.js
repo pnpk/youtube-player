@@ -295,6 +295,10 @@ async function main() {
   renderControls();
   renderHistory();
   $('load-form').addEventListener('submit', handleLoadSubmit);
+  $('url-clear').addEventListener('click', () => {
+    $('url').value = '';
+    $('url').focus(); // すぐ貼り付けられるように
+  });
 
   try {
     player = await createPlayer('player', { onError: handleError, onStateChange: handleStateChange });

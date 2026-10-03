@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#111111">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=5da104ee03">
 <title>練習プレーヤー</title>
 </head>
 <body>
@@ -27,7 +27,10 @@
 
 <section class="media">
   <form id="load-form" class="load-form">
-    <input id="url" type="text" inputmode="url" placeholder="YouTube の URL を貼り付け" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="url-field">
+      <input id="url" type="text" inputmode="url" placeholder="YouTube の URL を貼り付け" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button type="button" id="url-clear" class="url-clear" aria-label="URL を消す">×</button>
+    </div>
     <button type="submit">読み込む</button>
     <button type="button" id="history-open">履歴</button>
   </form>
@@ -67,6 +70,17 @@
 
 <script>window.ytReady = new Promise((resolve) => { window.onYouTubeIframeAPIReady = resolve; });</script>
 <script src="https://www.youtube.com/iframe_api"></script>
-<script type="module" src="app.js"></script>
+<!-- 版番号は npm run stamp で書き込む(更新直後に新旧のファイルが混ざらないように) -->
+<script type="importmap">
+{
+  "imports": {
+    "./history.js": "./history.js?v=5da104ee03",
+    "./loop.js": "./loop.js?v=5da104ee03",
+    "./player.js": "./player.js?v=5da104ee03",
+    "./storage.js": "./storage.js?v=5da104ee03"
+  }
+}
+</script>
+<script type="module" src="app.js?v=5da104ee03"></script>
 </body>
 </html>
