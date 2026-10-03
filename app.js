@@ -15,7 +15,7 @@ import {
 } from './loop.js';
 import { PLAYER_STATE, createPlayer, isPlayingState } from './player.js';
 import { openVideo, removeEntry, updateEntry } from './history.js';
-import { MAX_MARKERS, addMarker, findSection, loopRange, pruneMarkers, removeNearestMarker, sectionsOf } from './sections.js';
+import { MAX_MARKERS, findSection, loopRange, placeMarker, pruneMarkers, removeNearestMarker, sectionsOf } from './sections.js';
 import { loadHistory, saveHistory } from './storage.js';
 
 const TICK_MS = 50;
@@ -124,7 +124,7 @@ function activeRange() {
 
 function renderSections() {
   const sections = sectionsOf(state.range, state.markers);
-  $('marker-add').disabled = sections.length === 0;
+  $('marker-add').disabled = state.range.a == null; // B が未設定でも、A があれば押せる(B は動画の最後になる)
   $('marker-remove').disabled = state.markers.length === 0;
   const chips = sections.length > 1 ? [null, ...sections.map((_, i) => i)] : [];
   $('section-chips').replaceChildren(
@@ -331,9 +331,9 @@ function bindControls() {
   $('rate-value').addEventListener('click', () => changeRate(DEFAULT_RATE));
 
   $('marker-add').addEventListener('click', () => {
-    const next = addMarker(state.range, state.markers, player.time());
-    if (next) {
-      setLoop(state.range, next);
+    const placed = placeMarker(state.range, state.markers, player.time(), player.duration());
+    if (placed) {
+      setLoop(placed.range, placed.markers);
     } else if (state.markers.length >= MAX_MARKERS) {
       showToast(`区切りは ${MAX_MARKERS} 個までです`);
     } else {
