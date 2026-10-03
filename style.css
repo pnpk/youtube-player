@@ -116,7 +116,7 @@ button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
   top: calc(env(safe-area-inset-top) + 12px);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 10;
+  z-index: 30;
   max-width: calc(100% - 32px);
   padding: 12px 18px;
   font-size: 17px;
@@ -124,6 +124,48 @@ button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
   background: var(--error);
   border-radius: 12px;
 }
+
+/* 履歴: 画面全体に重ねて表示する */
+.history {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: calc(env(safe-area-inset-top) + 10px) calc(env(safe-area-inset-right) + 12px)
+    calc(env(safe-area-inset-bottom) + 12px) calc(env(safe-area-inset-left) + 12px);
+  background: var(--bg);
+}
+.history-head { display: flex; align-items: center; justify-content: space-between; }
+.history-head h2 { margin: 0; font-size: 22px; }
+.history-head button { min-width: var(--btn-min); font-size: 24px; }
+.history-empty { margin: 0; color: var(--muted); }
+.history-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.history-list li { display: flex; gap: 8px; }
+.history-item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 14px;
+  text-align: left;
+}
+.history-title { max-width: 100%; overflow: hidden; font-size: 18px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.history-meta { font-size: 14px; color: var(--muted); }
+.history-remove { min-width: var(--btn-min); font-size: 22px; }
 
 /* iPad 縦など(幅 600px 以上): A と B を 1 段に並べて 4 段 */
 @media (min-width: 600px) {

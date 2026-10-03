@@ -38,6 +38,11 @@ export async function createPlayer(elementId, { onError, onStateChange }) {
       duration: () => yt.getDuration() || 0,
       seek: (seconds) => yt.seekTo(seconds, true),
       setRate: (rate) => yt.setPlaybackRate(rate),
+      // 読み込みが終わるまでは空文字。別の動画の情報を拾わないよう、動画 ID も照合する
+      title: (videoId) => {
+        const data = yt.getVideoData?.();
+        return data && data.video_id === videoId ? data.title || '' : '';
+      },
     };
   });
 }

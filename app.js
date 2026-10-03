@@ -16,7 +16,8 @@ import {
   stepRate,
 } from './loop.js';
 import { PLAYER_STATE, createPlayer, isPlayingState } from './player.js';
-import { loadState, saveState } from './storage.js';
+import { openVideo, removeEntry, updateEntry } from './history.js';
+import { loadHistory, saveHistory } from './storage.js';
 
 const TICK_MS = 50;
 // seekTo 直後は getCurrentTime が古い値を返すことがあり、二重に戻ると間が伸びるので少し待つ
@@ -35,6 +36,7 @@ const storage = (() => {
 })();
 
 const state = { videoId: null, range: EMPTY_RANGE, rate: DEFAULT_RATE, preroll: DEFAULT_PREROLL };
+let history = [];
 let player = null;
 let lastJumpAt = 0;
 let toastTimer = 0;
@@ -56,9 +58,50 @@ function formatTime(t) {
   return `${m}:${s}`;
 }
 
+function formatDate(ms) {
+  const d = new Date(ms);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
+}
+
+// 今の動画の A/B・速度・助走を、履歴のその動画の項目に上書き保存する
 function persist() {
   const { videoId, range, rate, preroll } = state;
-  saveState(storage, { videoId, a: range.a, b: range.b, rate, preroll });
+  if (!videoId) return;
+  history = updateEntry(history, videoId, { a: range.a, b: range.b, rate, preroll });
+  saveHistory(storage, history);
+}
+
+function describeEntry(entry) {
+  const range = entry.a == null ? '区間なし' : `A ${formatTime(entry.a)}〜B ${formatTime(entry.b)}`;
+  return `${range} / ${Math.round(entry.rate * 100)}% / 助走${entry.preroll}s`;
+}
+
+function renderHistory() {
+  // タイトルは外部(YouTube)から来る文字列なので、innerHTML は使わず textContent で入れる
+  const items = history.map((entry) => {
+    const li = document.createElement('li');
+    const open = document.createElement('button');
+    open.className = 'history-item';
+    open.dataset.videoId = entry.videoId;
+    const title = document.createElement('span');
+    title.className = 'history-title';
+    title.textContent = entry.title || entry.videoId;
+    const meta = document.createElement('span');
+    meta.className = 'history-meta';
+    meta.textContent = `${formatDate(entry.openedAt)} ・ ${describeEntry(entry)}`;
+    open.append(title, meta);
+    const remove = document.createElement('button');
+    remove.className = 'history-remove';
+    remove.dataset.remove = entry.videoId;
+    remove.setAttribute('aria-label', `${entry.title || entry.videoId} を履歴から消す`);
+    remove.textContent = '×';
+    li.append(open, remove);
+    return li;
+  });
+  $('history-list').replaceChildren(...items);
+  $('history-empty').hidden = history.length > 0;
 }
 
 function renderControls() {
@@ -118,16 +161,40 @@ function jumpToLoopStart() {
   lastJumpAt = performance.now();
 }
 
+function applyEntry(entry) {
+  state.videoId = entry.videoId;
+  state.range = { a: entry.a, b: entry.b };
+  state.rate = entry.rate;
+  state.preroll = entry.preroll;
+  $('url').value = `https://youtu.be/${entry.videoId}`;
+}
+
 function loadVideo(videoId) {
-  state.videoId = videoId;
-  state.range = EMPTY_RANGE; // 前の動画の A/B を新しい動画に持ち込まない
+  const opened = openVideo(history, videoId, Date.now());
+  history = opened.history;
+  saveHistory(storage, history);
+  // 履歴にある動画なら前回の A/B・速度・助走を戻す。初めての動画なら初期設定(前の動画の A/B は持ち込まない)
+  applyEntry(opened.entry);
   player.load(videoId);
-  persist();
+  player.setRate(state.rate);
   renderControls();
   renderPosition();
+  renderHistory();
+}
+
+// タイトルは読み込み後でないと取れないので、プレーヤーの状態が変わるたびに取りに行く
+function captureTitle() {
+  if (!player || !state.videoId) return;
+  const title = player.title(state.videoId);
+  const entry = history.find((e) => e.videoId === state.videoId);
+  if (!title || !entry || entry.title === title) return;
+  history = updateEntry(history, state.videoId, { title });
+  saveHistory(storage, history);
+  renderHistory();
 }
 
 function handleStateChange(playerState) {
+  captureTitle();
   $('play').textContent = isPlayingState(playerState) ? '❚❚' : '▶';
   // 読み込み直後に設定した速度が効かないことがあるので、再生が始まるたびに当て直す
   if (playerState === PLAYER_STATE.PLAYING) player.setRate(state.rate);
@@ -158,6 +225,28 @@ function handleLoadSubmit(e) {
 }
 
 function bindControls() {
+  $('history-open').addEventListener('click', () => {
+    renderHistory();
+    $('history').hidden = false;
+  });
+  $('history-close').addEventListener('click', () => {
+    $('history').hidden = true;
+  });
+  $('history-list').addEventListener('click', (e) => {
+    const remove = e.target.closest('[data-remove]');
+    if (remove) {
+      history = removeEntry(history, remove.dataset.remove);
+      saveHistory(storage, history);
+      renderHistory();
+      return;
+    }
+    const item = e.target.closest('[data-video-id]');
+    if (item) {
+      $('history').hidden = true;
+      loadVideo(item.dataset.videoId);
+    }
+  });
+
   $('play').addEventListener('click', () => (player.isPlaying() ? player.pause() : player.play()));
   $('rewind').addEventListener('click', () => player.seek(rewind(player.time())));
   $('to-a').addEventListener('click', () => {
@@ -213,14 +302,11 @@ function tick() {
 }
 
 async function main() {
-  const saved = loadState(storage);
-  if (saved) {
-    state.videoId = saved.videoId;
-    state.range = { a: saved.a, b: saved.b };
-    state.rate = saved.rate;
-    state.preroll = saved.preroll;
-  }
+  history = loadHistory(storage, Date.now());
+  saveHistory(storage, history); // 旧形式から引き継いだときに、新しい形式で保存し直しておく
+  if (history[0]) applyEntry(history[0]); // 最後に開いた動画を、その設定ごと戻す
   renderControls();
+  renderHistory();
   $('load-form').addEventListener('submit', handleLoadSubmit);
 
   try {
@@ -230,10 +316,7 @@ async function main() {
     return;
   }
   bindControls();
-  if (state.videoId) {
-    $('url').value = `https://youtu.be/${state.videoId}`;
-    player.load(state.videoId); // 復元時は自動再生しない
-  }
+  if (state.videoId) player.load(state.videoId); // 復元時は自動再生しない
   setInterval(tick, TICK_MS);
 }
 

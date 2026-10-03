@@ -16,10 +16,20 @@
 <body>
 <div id="toast" class="toast" role="status" hidden></div>
 
+<div id="history" class="history" role="dialog" aria-label="再生履歴" hidden>
+  <div class="history-head">
+    <h2>履歴</h2>
+    <button id="history-close" aria-label="閉じる">×</button>
+  </div>
+  <p id="history-empty" class="history-empty">まだ履歴はありません</p>
+  <ul id="history-list" class="history-list"></ul>
+</div>
+
 <section class="media">
   <form id="load-form" class="load-form">
     <input id="url" type="text" inputmode="url" placeholder="YouTube の URL を貼り付け" autocomplete="off" autocapitalize="off" spellcheck="false">
     <button type="submit">読み込む</button>
+    <button type="button" id="history-open">履歴</button>
   </form>
   <div class="video"><div id="player"></div></div>
   <div class="seek-row">

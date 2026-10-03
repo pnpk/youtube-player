@@ -1,38 +1,35 @@
-// 最後の状態(動画・A/B・速度・助走)を 1 件だけ保存し、起動時に戻す。
-// 保存先が使えない・中身が壊れているときは、何も言わずに初期状態にする。
-import { DEFAULT_PREROLL, DEFAULT_RATE, PREROLLS, isValidRate, parseVideoId, setB } from './loop.js';
+// 再生履歴を保存し、起動時に読み込む。
+// 保存先が使えない・中身が壊れているときは、何も言わずに空の履歴にする。
+import { sanitizeHistory, sanitizeSettings } from './history.js';
 
+// 旧形式: 最後の状態 1 件だけ。履歴がまだないときに 1 件目として引き継ぐ
 export const STORAGE_KEY = 'yt-practice-player:v1';
+export const HISTORY_KEY = 'yt-practice-player:history:v1';
 
-const isTime = (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0;
-
-function sanitize(raw) {
-  if (!raw || typeof raw !== 'object') return null;
-  if (typeof raw.videoId !== 'string' || parseVideoId(raw.videoId) !== raw.videoId) return null;
-  const a = isTime(raw.a) ? raw.a : null;
-  const b = a != null && isTime(raw.b) ? (setB({ a, b: null }, raw.b)?.b ?? null) : null;
-  return {
-    videoId: raw.videoId,
-    a,
-    b,
-    rate: isValidRate(raw.rate) ? raw.rate : DEFAULT_RATE,
-    preroll: PREROLLS.includes(raw.preroll) ? raw.preroll : DEFAULT_PREROLL,
-  };
-}
-
-export function saveState(storage, state) {
+function readJson(storage, key) {
   try {
-    storage?.setItem(STORAGE_KEY, JSON.stringify(state));
+    const raw = storage?.getItem(key);
+    return raw == null ? undefined : JSON.parse(raw);
   } catch {
-    // 保存できなくても練習の邪魔はしない
+    return null;
   }
 }
 
 export function loadState(storage) {
+  return sanitizeSettings(readJson(storage, STORAGE_KEY));
+}
+
+export function loadHistory(storage, now) {
+  const raw = readJson(storage, HISTORY_KEY);
+  if (raw !== undefined) return sanitizeHistory(raw);
+  const legacy = loadState(storage);
+  return legacy ? [{ ...legacy, title: '', openedAt: now }] : [];
+}
+
+export function saveHistory(storage, history) {
   try {
-    const raw = storage?.getItem(STORAGE_KEY);
-    return raw ? sanitize(JSON.parse(raw)) : null;
+    storage?.setItem(HISTORY_KEY, JSON.stringify(history));
   } catch {
-    return null;
+    // 保存できなくても練習の邪魔はしない
   }
 }
