@@ -562,9 +562,30 @@ function bindLoopbar() {
     handle.addEventListener('pointerup', finish);
     handle.addEventListener('pointercancel', finish);
   }
-  track.addEventListener('click', (e) => {
-    const view = loopWindow(state.range, player.duration());
-    if (view) player.seek(timeAt(e.clientX, view));
+  // バー(つまみ以外)を指でスライドすると、再生位置の線と時刻だけが指についてきて、離した位置へ移動する(タップでも移動)
+  let scrubView = null;
+  track.addEventListener('pointerdown', (e) => {
+    scrubView = loopWindow(state.range, player.duration());
+    if (!scrubView) return;
+    track.setPointerCapture(e.pointerId);
+    dragTime = timeAt(e.clientX, scrubView);
+    renderPosition();
+  });
+  track.addEventListener('pointermove', (e) => {
+    if (!scrubView) return;
+    dragTime = timeAt(e.clientX, scrubView);
+    renderPosition();
+  });
+  track.addEventListener('pointerup', () => {
+    if (!scrubView) return;
+    player.seek(dragTime);
+    lastJumpAt = performance.now();
+    dragTime = null;
+    scrubView = null;
+  });
+  track.addEventListener('pointercancel', () => {
+    dragTime = null;
+    scrubView = null;
   });
 }
 

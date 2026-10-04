@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=8d3772ebc9">
+<link rel="stylesheet" href="style.css?v=5cc5f9cff8">
 <title>練習プレーヤー</title>
 </head>
 <body>
@@ -70,7 +70,7 @@
           <li><span class="help-icon muted"><svg><use href="#i-xmark"/></svg></span><span>URL 欄の中身を消す</span></li>
         </ul>
         <p class="help-note">再生バーはタップでその位置へ移動します。指を置いたままスライドすると時刻がついてきて、離した位置へ移動します。ループの行の A の時刻をタップすると A へ移動します。</p>
-        <p class="help-note">ループバーは A-B の付近だけを拡大した表示です。A / B のつまみを 0.1 秒単位でドラッグでき、区切り(青い線)や再生位置(黒い線)、秒の目盛りも見えます。ドラッグ中は、つまみの上に時刻と元の位置からの差(例: +0.3秒)が出て、元の位置には薄い影が残ります。バーをタップするとその位置へ移動します。</p>
+        <p class="help-note">ループバーは A-B の付近だけを拡大した表示です。A / B のつまみを 0.1 秒単位でドラッグでき、区切り(青い線)や再生位置(黒い線)、秒の目盛りも見えます。ドラッグ中は、つまみの上に時刻と元の位置からの差(例: +0.3秒)が出て、元の位置には薄い影が残ります。バーをタップするか、指を置いたままスライドすると、その位置へ移動します。</p>
       </section>
 
       <section>
@@ -149,7 +149,7 @@
     <div class="scrub-times"><span id="time">0:00.0</span><span id="duration">0:00</span></div>
     <!-- ループバー: A-B の付近だけを拡大して表示し、A / B のつまみをドラッグできる -->
     <div id="loopbar" class="loopbar" hidden>
-      <div id="lb-track" class="lb-track" title="タップでその位置へ移動">
+      <div id="lb-track" class="lb-track" title="タップ・スライドでその位置へ移動">
         <div id="lb-ticks" class="lb-ticks"></div>
         <div id="lb-range" class="lb-range"></div>
         <div id="lb-bands" class="lb-bands"></div>
@@ -232,15 +232,15 @@
 <script type="importmap">
 {
   "imports": {
-    "./keys.js": "./keys.js?v=8d3772ebc9",
-    "./history.js": "./history.js?v=8d3772ebc9",
-    "./loop.js": "./loop.js?v=8d3772ebc9",
-    "./player.js": "./player.js?v=8d3772ebc9",
-    "./sections.js": "./sections.js?v=8d3772ebc9",
-    "./storage.js": "./storage.js?v=8d3772ebc9"
+    "./keys.js": "./keys.js?v=5cc5f9cff8",
+    "./history.js": "./history.js?v=5cc5f9cff8",
+    "./loop.js": "./loop.js?v=5cc5f9cff8",
+    "./player.js": "./player.js?v=5cc5f9cff8",
+    "./sections.js": "./sections.js?v=5cc5f9cff8",
+    "./storage.js": "./storage.js?v=5cc5f9cff8"
   }
 }
 </script>
-<script type="module" src="app.js?v=8d3772ebc9"></script>
+<script type="module" src="app.js?v=5cc5f9cff8"></script>
 </body>
 </html>
