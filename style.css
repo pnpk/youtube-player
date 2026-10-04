@@ -13,6 +13,17 @@
   --segment-on: #fff;
   --thumb: #fff;
   --hud: rgba(30, 30, 30, 0.82);
+  /* 区間の色(iOS の標準色)。区間 1 から順に使う */
+  --sec-1: #007aff;
+  --sec-2: #34c759;
+  --sec-3: #ff9500;
+  --sec-4: #af52de;
+  --sec-5: #ff2d55;
+  --sec-6: #30b0c7;
+  --sec-7: #5856d6;
+  --sec-8: #ffcc00;
+  --sec-9: #ff3b30;
+  --sec-10: #00c7be;
   --gap: 10px;
   --row: 52px;
   --radius: 12px;
@@ -32,6 +43,16 @@
     --segment-on: #636366;
     --thumb: #f2f2f7;
     --hud: rgba(60, 60, 64, 0.85);
+    --sec-1: #0a84ff;
+    --sec-2: #30d158;
+    --sec-3: #ff9f0a;
+    --sec-4: #bf5af2;
+    --sec-5: #ff375f;
+    --sec-6: #40c8e0;
+    --sec-7: #5e5ce6;
+    --sec-8: #ffd60a;
+    --sec-9: #ff453a;
+    --sec-10: #63e6e2;
   }
 }
 
@@ -167,8 +188,31 @@ svg { display: block; }
 .lb-tick { position: absolute; bottom: 0; width: 1px; height: 5px; background: var(--secondary); opacity: 0.45; }
 .lb-tick.major { height: 9px; opacity: 0.7; }
 .lb-range { position: absolute; top: 0; bottom: 0; background: var(--tint-soft); }
-.lb-section { position: absolute; top: 0; bottom: 0; background: var(--tint); opacity: 0.55; }
-.lb-mark { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--tint); }
+/* 区間の帯: 区間ごとの色で塗り分け、境目(区切り)は細い隙間で見せる */
+.lb-bands { position: absolute; inset: 0; }
+.lb-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-left: 2px solid var(--group);
+  background: color-mix(in srgb, var(--sec) 38%, transparent);
+}
+.lb-band:first-child { border-left: 0; }
+.lb-band span {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  /* 黄色などでも読めるよう、区間の色を文字色に寄せて濃く(ダークでは明るく)する */
+  color: color-mix(in srgb, var(--sec) 65%, var(--label));
+}
+.lb-band.on { background: color-mix(in srgb, var(--sec) 75%, transparent); }
+/* 濃く塗った帯の上では、帯の色をぐっと暗くした文字にする(黄色の帯でも読めるように) */
+.lb-band.on span { color: color-mix(in srgb, var(--sec) 30%, #000); }
+.lb-band.dim { background: color-mix(in srgb, var(--sec) 16%, transparent); }
+.lb-band.dim span { opacity: 0.6; }
 .lb-head { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--label); border-radius: 1px; pointer-events: none; }
 .lb-handle {
   position: absolute;
@@ -295,6 +339,7 @@ svg { display: block; }
 /* 区切り: セグメントで区間を選ぶ */
 .segment-wrap { padding: 8px; }
 .segmented {
+  position: relative; /* 選んでいるボタンの位置(offsetLeft)をこの中で測るため */
   display: flex;
   gap: 2px;
   padding: 2px;
@@ -305,6 +350,9 @@ svg { display: block; }
 }
 .segmented:empty { display: none; }
 .segmented button { flex: 1 0 44px; min-width: 44px; height: 36px; padding: 0 10px; font-size: 15px; white-space: nowrap; border-radius: 7px; }
+/* 区間のボタン: 番号の左にその区間の色の丸。選んでいるボタンは番号もその色にする */
+.sec-dot { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: 1px; background: var(--sec); border-radius: 50%; }
+.segmented button[data-section]:not([data-section=""])[aria-pressed="true"] { color: color-mix(in srgb, var(--sec) 70%, var(--label)); }
 .segmented button[aria-pressed="true"] {
   font-weight: 600;
   background: var(--segment-on);

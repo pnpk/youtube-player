@@ -3,6 +3,12 @@
 import { gapOk, round2 } from './loop.js';
 
 export const MAX_MARKERS = 9;
+export const SECTION_COLORS = 10;
+
+// 区間の色(style.css の --sec-1 〜 --sec-10)。番号は 0 始まり
+export function sectionColor(index) {
+  return `var(--sec-${(index % SECTION_COLORS) + 1})`;
+}
 
 const complete = (range) => range.a != null && range.b != null;
 // A・B・ほかの区切りのどれからも最低間隔以上離れているか

@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=a823a9b724">
+<link rel="stylesheet" href="style.css?v=8d3772ebc9">
 <title>練習プレーヤー</title>
 </head>
 <body>
@@ -78,6 +78,7 @@
         <ul class="group help-text">
           <li>再生しながら「＋ 区切り」を押すと、その位置で A-B を区間に分けます。</li>
           <li>「全体 / 1 / 2 …」で区間を選ぶと、その区間だけをループします。「全体」で元に戻ります。</li>
+          <li>区間には番号ごとに色が付きます(1 青・2 緑・3 オレンジ…)。ループバーの帯とボタンの丸が同じ色なので、どの番号がどこかが一目で分かります。選んでいる区間はループバーで濃く表示されます。</li>
           <li>「− 区切り」は、今の位置にいちばん近い区切りを消します。</li>
           <li>A / B を決める前でも押せます。そのときは A が動画の先頭、B が動画の最後になり、あとで A / B を押すとその位置に移ります。</li>
         </ul>
@@ -151,8 +152,7 @@
       <div id="lb-track" class="lb-track" title="タップでその位置へ移動">
         <div id="lb-ticks" class="lb-ticks"></div>
         <div id="lb-range" class="lb-range"></div>
-        <div id="lb-section" class="lb-section" hidden></div>
-        <div id="lb-marks"></div>
+        <div id="lb-bands" class="lb-bands"></div>
         <div id="lb-head" class="lb-head"></div>
       </div>
       <div id="lb-ghost" class="lb-handle lb-ghost" aria-hidden="true" hidden></div>
@@ -232,15 +232,15 @@
 <script type="importmap">
 {
   "imports": {
-    "./keys.js": "./keys.js?v=a823a9b724",
-    "./history.js": "./history.js?v=a823a9b724",
-    "./loop.js": "./loop.js?v=a823a9b724",
-    "./player.js": "./player.js?v=a823a9b724",
-    "./sections.js": "./sections.js?v=a823a9b724",
-    "./storage.js": "./storage.js?v=a823a9b724"
+    "./keys.js": "./keys.js?v=8d3772ebc9",
+    "./history.js": "./history.js?v=8d3772ebc9",
+    "./loop.js": "./loop.js?v=8d3772ebc9",
+    "./player.js": "./player.js?v=8d3772ebc9",
+    "./sections.js": "./sections.js?v=8d3772ebc9",
+    "./storage.js": "./storage.js?v=8d3772ebc9"
   }
 }
 </script>
-<script type="module" src="app.js?v=a823a9b724"></script>
+<script type="module" src="app.js?v=8d3772ebc9"></script>
 </body>
 </html>

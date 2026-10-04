@@ -21,7 +21,7 @@ import {
 } from './loop.js';
 import { PLAYER_STATE, createPlayer, isPlayingState } from './player.js';
 import { openVideo, removeEntry, updateEntry } from './history.js';
-import { MAX_MARKERS, findSection, loopRange, placeMarker, pruneMarkers, removeNearestMarker, restartPoint, sectionsOf } from './sections.js';
+import { MAX_MARKERS, findSection, loopRange, placeMarker, pruneMarkers, removeNearestMarker, restartPoint, sectionColor, sectionsOf } from './sections.js';
 import { loadHistory, saveHistory } from './storage.js';
 import { commandForKey } from './keys.js';
 
@@ -138,6 +138,17 @@ function renderControls() {
   renderSections();
 }
 
+// 区間のボタンが横にスクロールしているとき、選んでいるボタンが隠れないように見える位置までずらす
+function revealSelectedChip() {
+  const list = $('section-chips');
+  const chip = list.querySelector('[aria-pressed="true"]');
+  if (!chip) return;
+  const left = chip.offsetLeft;
+  const right = left + chip.offsetWidth;
+  if (left < list.scrollLeft) list.scrollLeft = left - 4;
+  else if (right > list.scrollLeft + list.clientWidth) list.scrollLeft = right - list.clientWidth + 4;
+}
+
 // 今ループしている範囲(区間を選んでいればその区間、なければ A-B 全体)
 function activeRange() {
   return loopRange(state.range, state.markers, state.selected);
@@ -153,12 +164,21 @@ function renderSections() {
     ...chips.map((index) => {
       const chip = document.createElement('button');
       chip.dataset.section = index ?? '';
-      chip.textContent = index == null ? '全体' : String(index + 1);
+      if (index == null) {
+        chip.textContent = '全体';
+      } else {
+        // 番号の左に、その区間の色の丸を付ける
+        chip.style.setProperty('--sec', sectionColor(index));
+        const dot = document.createElement('span');
+        dot.className = 'sec-dot';
+        chip.append(dot, String(index + 1));
+      }
       chip.setAttribute('aria-pressed', String(index === state.selected));
       chip.title = index == null ? '全体(0)' : `区間 ${index + 1}(${index + 1})`;
       return chip;
     }),
   );
+  revealSelectedChip();
   // 再生バーの区切りの線(位置は renderPosition で動画の長さに合わせて決める)
   $('section-hint').hidden = chips.length > 0;
   $('seek-marks').replaceChildren(
@@ -204,6 +224,7 @@ function renderPosition() {
     sectionEl.hidden = false;
     sectionEl.style.left = percent(section.a);
     sectionEl.style.width = percent(section.b - section.a);
+    sectionEl.style.background = sectionColor(state.selected);
   }
   renderLoopbar(time, duration);
 }
@@ -222,23 +243,37 @@ function renderLoopbar(time, duration) {
   $('lb-b').style.left = percent(range.b);
   $('lb-head').style.left = percent(time);
   $('lb-head').hidden = time < view.start || time > view.end;
-  const markers = state.markers.filter((m) => m > range.a && m < range.b);
-  const marks = $('lb-marks');
-  if (marks.children.length !== markers.length) {
-    marks.replaceChildren(...markers.map(() => Object.assign(document.createElement('div'), { className: 'lb-mark' })));
-  }
-  [...marks.children].forEach((mark, i) => {
-    mark.style.left = percent(markers[i]);
-  });
-  const sectionEl = $('lb-section');
-  sectionEl.hidden = loopDrag != null || state.selected == null;
-  if (!sectionEl.hidden) {
-    const section = activeRange();
-    sectionEl.style.left = percent(section.a);
-    sectionEl.style.width = `calc(${percent(section.b)} - ${percent(section.a)})`;
-  }
+  renderBands(range, percent);
   renderTicks(view);
   renderDragFeedback(range, percent);
+}
+
+// ループバーの区間: 区間ごとの色で塗り分け、帯の中に番号を出す。選んでいる区間だけ濃くする
+function renderBands(range, percent) {
+  const markers = state.markers.filter((m) => m > range.a && m < range.b);
+  const sections = markers.length ? sectionsOf(range, markers) : [];
+  $('lb-range').hidden = sections.length > 0;
+  const bands = $('lb-bands');
+  if (bands.children.length !== sections.length) {
+    bands.replaceChildren(
+      ...sections.map((_, i) => {
+        const band = document.createElement('div');
+        band.className = 'lb-band';
+        band.style.setProperty('--sec', sectionColor(i));
+        const label = document.createElement('span');
+        label.textContent = String(i + 1);
+        band.append(label);
+        return band;
+      }),
+    );
+  }
+  const selected = loopDrag ? null : state.selected;
+  [...bands.children].forEach((band, i) => {
+    band.style.left = percent(sections[i].a);
+    band.style.width = `calc(${percent(sections[i].b)} - ${percent(sections[i].a)})`;
+    band.classList.toggle('on', selected === i);
+    band.classList.toggle('dim', selected != null && selected !== i);
+  });
 }
 
 // ループバーの目盛り(長い線と短い線)

@@ -7,6 +7,7 @@ import {
   loopRange,
   placeMarker,
   restartPoint,
+  sectionColor,
   pruneMarkers,
   removeNearestMarker,
   sectionsOf,
@@ -104,4 +105,10 @@ test('restartPoint: 「頭に戻る」の戻り先。区間を選んでいれば
   assert.equal(restartPoint({ a: 2, b: 10 }, [], null), 2);
   assert.equal(restartPoint({ a: 2, b: null }, [], null), 2);
   assert.equal(restartPoint({ a: null, b: null }, [], null), 0);
+});
+
+test('sectionColor: 区間の番号(0 始まり)から色の CSS 変数を決める。10 色をくりかえす', () => {
+  assert.equal(sectionColor(0), 'var(--sec-1)');
+  assert.equal(sectionColor(9), 'var(--sec-10)');
+  assert.equal(sectionColor(10), 'var(--sec-1)');
 });
