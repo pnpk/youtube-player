@@ -149,6 +149,47 @@ svg { display: block; }
   box-shadow: 0 0.5px 4px rgba(0, 0, 0, 0.12), 0 6px 13px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
   pointer-events: none;
 }
+/* ループバー: A-B の付近を拡大した表示。A / B のつまみをドラッグできる */
+.loopbar { position: relative; height: 40px; margin: 2px 0 0; touch-action: none; }
+.lb-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 20px;
+  margin-top: -10px;
+  overflow: hidden;
+  background: var(--fill);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.lb-range { position: absolute; top: 0; bottom: 0; background: var(--tint-soft); }
+.lb-section { position: absolute; top: 0; bottom: 0; background: var(--tint); opacity: 0.55; }
+.lb-mark { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--tint); }
+.lb-head { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--label); border-radius: 1px; pointer-events: none; }
+.lb-handle {
+  position: absolute;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--tint);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* 指で触りやすいよう、見た目より広い範囲でつかめるようにする */
+.lb-handle::before { content: ""; position: absolute; inset: -8px; }
+.lb-handle.dragging { cursor: grabbing; transform: scale(1.15); }
+
 .scrub-times {
   display: flex;
   justify-content: space-between;
@@ -157,7 +198,7 @@ svg { display: block; }
   font-variant-numeric: tabular-nums;
 }
 
-.transport { display: flex; align-items: center; justify-content: space-evenly; height: 76px; }
+.transport { display: flex; align-items: center; justify-content: space-evenly; height: 64px; }
 .transport-side { min-width: 64px; min-height: 64px; }
 .transport-side svg { width: 30px; height: 30px; }
 .play-button {
@@ -216,6 +257,10 @@ svg { display: block; }
   text-align: left;
 }
 .rate-value { font-size: 22px; font-weight: 600; min-height: 40px; }
+/* A の時刻はタップで A へ移動するボタン */
+.time-jump { min-height: 40px; }
+.time-jump:active:not(:disabled) { opacity: 0.5; }
+.time-jump:disabled { opacity: 1; cursor: default; }
 .rate-value:active { opacity: 0.5; }
 
 /* ステッパー(− / +) */
@@ -391,6 +436,8 @@ kbd {
   .media { min-height: 0; }
   /* 動画が画面の高さに収まるように幅を抑える(URL 欄・再生バー・再生ボタン・余白ぶんを引く) */
   .video { width: min(100%, calc((100dvh - 250px) * 16 / 9)); align-self: center; }
+  /* ループバーが出ているときは、そのぶん動画を小さくする */
+  .media:has(.loopbar:not([hidden])) .video { width: min(100%, calc((100dvh - 300px) * 16 / 9)); }
   .controls { display: flex; flex-direction: column; align-items: stretch; }
   .loop-rows { display: block; }
   .loop-rows .row + .row { border-left: 0; border-top: 0.5px solid var(--separator); }
@@ -403,6 +450,7 @@ kbd {
   .transport-side { min-width: 52px; min-height: 52px; }
   .play-button { width: 50px; height: 50px; }
   .video { width: min(100%, calc((100dvh - 212px) * 16 / 9)); }
+  .media:has(.loopbar:not([hidden])) .video { width: min(100%, calc((100dvh - 262px) * 16 / 9)); }
   .scrub { padding: 4px 16px 4px; }
   .set-button, .stepper { height: 36px; }
   .block-head { min-height: 18px; }

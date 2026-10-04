@@ -64,6 +64,28 @@ export function nudgeB(range, delta, duration) {
   return { a: range.a, b };
 }
 
+// ループバーで A / B のつまみをドラッグしたときの位置(0.1 秒単位)
+const round1 = (x) => Math.round(x * 10) / 10;
+
+export function moveA(range, time) {
+  const a = Math.max(0, round1(time));
+  return { a: round2(Math.min(a, range.b - MIN_GAP)), b: range.b };
+}
+
+export function moveB(range, time, duration) {
+  let b = round1(time);
+  if (duration > 0) b = Math.min(b, duration);
+  return { a: range.a, b: round2(Math.max(b, range.a + MIN_GAP)) };
+}
+
+// ループバーに表示する範囲。A-B の前後に、区間の長さの 25%(最低 1 秒)の余白を付ける
+export function loopWindow(range, duration) {
+  if (range.a == null || range.b == null) return null;
+  const pad = Math.max(1, (range.b - range.a) * 0.25);
+  const end = range.b + pad;
+  return { start: Math.max(0, range.a - pad), end: duration > 0 ? Math.min(duration, end) : end };
+}
+
 export function shouldJump(time, range) {
   return range.a != null && range.b != null && time >= range.b;
 }

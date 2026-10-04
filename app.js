@@ -9,6 +9,9 @@ import {
   parseVideoId,
   rewind,
   seekBy,
+  moveA,
+  moveB,
+  loopWindow,
   setA,
   setB,
   shouldJump,
@@ -42,6 +45,8 @@ let history = [];
 let player = null;
 // 再生バーを指でスライドしている間の位置(秒)。スライドしていないときは null
 let dragTime = null;
+// ループバーで A / B をドラッグしている間の、仮の A-B と表示範囲。ドラッグしていないときは null
+let loopDrag = null;
 let lastJumpAt = 0;
 let toastTimer = 0;
 
@@ -119,6 +124,7 @@ function renderControls() {
   const { a, b } = state.range;
   $('a-time').textContent = formatTime(a);
   $('b-time').textContent = formatTime(b);
+  $('a-time').disabled = a == null;
   $('clear-loop').hidden = a == null && b == null;
   $('rate-value').textContent = `${Math.round(state.rate * 100)}%`;
   $('rate-down').disabled = state.rate <= RATE_MIN;
@@ -192,6 +198,42 @@ function renderPosition() {
     sectionEl.hidden = false;
     sectionEl.style.left = percent(section.a);
     sectionEl.style.width = percent(section.b - section.a);
+  }
+  renderLoopbar(time, duration);
+}
+
+// ループバー: A-B の付近だけを拡大して表示する。ドラッグ中は仮の A-B と、つかんだときの表示範囲を使う
+function renderLoopbar(time, duration) {
+  const range = loopDrag ? loopDrag.range : state.range;
+  const view = loopDrag ? loopDrag.view : loopWindow(range, duration);
+  $('loopbar').hidden = !view || !duration;
+  if ($('loopbar').hidden) return;
+  const span = view.end - view.start;
+  const percent = (t) => `${Math.min(100, Math.max(0, ((t - view.start) / span) * 100))}%`;
+  $('lb-range').style.left = percent(range.a);
+  $('lb-range').style.width = `calc(${percent(range.b)} - ${percent(range.a)})`;
+  $('lb-a').style.left = percent(range.a);
+  $('lb-b').style.left = percent(range.b);
+  $('lb-head').style.left = percent(time);
+  $('lb-head').hidden = time < view.start || time > view.end;
+  const markers = state.markers.filter((m) => m > range.a && m < range.b);
+  const marks = $('lb-marks');
+  if (marks.children.length !== markers.length) {
+    marks.replaceChildren(...markers.map(() => Object.assign(document.createElement('div'), { className: 'lb-mark' })));
+  }
+  [...marks.children].forEach((mark, i) => {
+    mark.style.left = percent(markers[i]);
+  });
+  const sectionEl = $('lb-section');
+  sectionEl.hidden = loopDrag != null || state.selected == null;
+  if (!sectionEl.hidden) {
+    const section = activeRange();
+    sectionEl.style.left = percent(section.a);
+    sectionEl.style.width = `calc(${percent(section.b)} - ${percent(section.a)})`;
+  }
+  if (loopDrag) {
+    $('a-time').textContent = formatTime(range.a);
+    $('b-time').textContent = formatTime(range.b);
   }
 }
 
@@ -302,6 +344,12 @@ function restart() {
   player.play();
 }
 
+function jumpToA() {
+  if (state.range.a == null) return;
+  player.seek(state.range.a);
+  lastJumpAt = performance.now();
+}
+
 function setAHere() {
   if (!state.videoId) return;
   updateRange(setA(state.range, player.time()));
@@ -377,6 +425,7 @@ function bindControls() {
   $('to-a').addEventListener('click', restart);
 
   $('set-a').addEventListener('click', setAHere);
+  $('a-time').addEventListener('click', jumpToA);
   $('set-b').addEventListener('click', setBHere);
   $('a-minus').addEventListener('click', () => updateRange(nudgeA(state.range, -NUDGE)));
   $('a-plus').addEventListener('click', () => updateRange(nudgeA(state.range, NUDGE)));
@@ -399,7 +448,48 @@ function bindControls() {
   });
 
   bindSeekDrag();
+  bindLoopbar();
   bindKeyboard();
+}
+
+// ループバー: A / B のつまみのドラッグと、バーのタップでの移動
+function bindLoopbar() {
+  const track = $('lb-track');
+  const timeAt = (clientX, view) => {
+    const rect = track.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    return view.start + ratio * (view.end - view.start);
+  };
+  for (const handle of [$('lb-a'), $('lb-b')]) {
+    handle.addEventListener('pointerdown', (e) => {
+      const view = loopWindow(state.range, player.duration());
+      if (!view) return;
+      e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
+      // 表示範囲はつかんだときのまま固定する(動かすたびに範囲が変わると、つまみが指から逃げるため)
+      loopDrag = { which: handle.dataset.handle, view, range: state.range };
+      handle.classList.add('dragging');
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!loopDrag) return;
+      const t = timeAt(e.clientX, loopDrag.view);
+      loopDrag.range = loopDrag.which === 'a' ? moveA(loopDrag.range, t) : moveB(loopDrag.range, t, player.duration());
+      renderPosition();
+    });
+    const finish = () => {
+      if (!loopDrag) return;
+      const { range } = loopDrag;
+      loopDrag = null;
+      handle.classList.remove('dragging');
+      updateRange(range); // 指を離したときに確定する(区切りの整理と保存もここで)
+    };
+    handle.addEventListener('pointerup', finish);
+    handle.addEventListener('pointercancel', finish);
+  }
+  track.addEventListener('click', (e) => {
+    const view = loopWindow(state.range, player.duration());
+    if (view) player.seek(timeAt(e.clientX, view));
+  });
 }
 
 function runCommand(command) {
@@ -412,6 +502,8 @@ function runCommand(command) {
       return changeRate(stepRate(state.rate, command.direction));
     case 'setA':
       return setAHere();
+    case 'jumpA':
+      return jumpToA();
     case 'setB':
       return setBHere();
     case 'restart':

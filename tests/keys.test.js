@@ -27,6 +27,10 @@ test('A / B / R / M(大文字・小文字どちらでも)', () => {
   for (const k of ['m', 'M']) assert.deepEqual(commandForKey(key(k)), { type: 'addMarker' }, k);
 });
 
+test('Shift + A で A へ移動', () => {
+  assert.deepEqual(commandForKey(key('A', { shiftKey: true })), { type: 'jumpA' });
+});
+
 test('1〜9 で区間を選び、0 で全体に戻す', () => {
   assert.deepEqual(commandForKey(key('1')), { type: 'section', index: 0 });
   assert.deepEqual(commandForKey(key('9')), { type: 'section', index: 8 });

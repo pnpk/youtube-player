@@ -12,6 +12,9 @@ import {
   isValidRate,
   rewind,
   seekBy,
+  moveA,
+  moveB,
+  loopWindow,
 } from '../loop.js';
 
 const ID = 'dQw4w9WgXcQ';
@@ -166,4 +169,28 @@ test('seekBy: 前後に動かす。0 より前・動画の長さより後ろに�
   assert.equal(seekBy(1, -3, 60), 0);
   assert.equal(seekBy(58, 10, 60), 60);
   assert.equal(seekBy(58, 10, 0), 68, '長さが不明なら上限なし');
+});
+
+test('moveA: ドラッグした位置へ 0.1 秒単位で動かす。0 より前・B の 0.1 秒手前より後ろには行かない', () => {
+  assert.deepEqual(moveA({ a: 5, b: 10 }, 6.04), { a: 6, b: 10 });
+  assert.deepEqual(moveA({ a: 5, b: 10 }, -1), { a: 0, b: 10 });
+  assert.deepEqual(moveA({ a: 5, b: 10 }, 9.97), { a: 9.9, b: 10 });
+});
+
+test('moveB: ドラッグした位置へ 0.1 秒単位で動かす。A の 0.1 秒後ろより前・動画の長さより後ろには行かない', () => {
+  assert.deepEqual(moveB({ a: 5, b: 10 }, 12.06, 60), { a: 5, b: 12.1 });
+  assert.deepEqual(moveB({ a: 5, b: 10 }, 5.02, 60), { a: 5, b: 5.1 });
+  assert.deepEqual(moveB({ a: 5, b: 10 }, 70, 60), { a: 5, b: 60 });
+  assert.deepEqual(moveB({ a: 5, b: 10 }, 70, 0), { a: 5, b: 70 }, '長さが不明なら上限なし');
+});
+
+test('loopWindow: ループバーに表示する範囲。A-B の前後に区間の長さの 25%(最低 1 秒)の余白', () => {
+  assert.deepEqual(loopWindow({ a: 10, b: 18 }, 60), { start: 8, end: 20 });
+  assert.deepEqual(loopWindow({ a: 0.5, b: 2.5 }, 60), { start: 0, end: 3.5 }, '先頭より前には行かない');
+  assert.deepEqual(loopWindow({ a: 16, b: 20 }, 20.5), { start: 15, end: 20.5 }, '動画の長さより後ろには行かない');
+  assert.deepEqual(loopWindow({ a: 16, b: 20 }, 0), { start: 15, end: 21 }, '長さが不明なら上限なし');
+});
+
+test('loopWindow: A/B が揃っていなければ null', () => {
+  assert.equal(loopWindow({ a: 1, b: null }, 60), null);
 });

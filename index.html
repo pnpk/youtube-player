@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=eb56297ed1">
+<link rel="stylesheet" href="style.css?v=d6f0118d69">
 <title>練習プレーヤー</title>
 </head>
 <body>
@@ -54,7 +54,7 @@
           <li>上の欄に YouTube の URL を貼り付けます。貼り付けるとすぐ読み込みます(手で入力したときは「開く」)。</li>
           <li><span class="help-icon play"><svg><use href="#i-play"/></svg></span> で再生し、練習したいフレーズの頭で <b class="help-chip">A</b>、終わりで <b class="help-chip">B</b> を押します。B を押すとループが始まり、B を過ぎるたびに A へ戻ります。</li>
           <li>「速度」の − / + で速度を下げます(5% ずつ、50〜100%)。数字をタップすると 100% に戻ります。</li>
-          <li>位置がずれていたら、A / B の横の − / + で 0.1 秒ずつ直します。</li>
+          <li>位置がずれていたら、A / B の横の − / + で 0.1 秒ずつ直します。再生バーの下に出るループバーで、A / B の丸いつまみをドラッグしても動かせます。</li>
         </ol>
         <p class="help-note">ループをやめるときは、「ループ」の見出しの右の「解除」を押します。</p>
       </section>
@@ -69,7 +69,8 @@
           <li><span class="help-icon"><svg><use href="#i-help"/></svg></span><span>このヘルプ</span></li>
           <li><span class="help-icon muted"><svg><use href="#i-xmark"/></svg></span><span>URL 欄の中身を消す</span></li>
         </ul>
-        <p class="help-note">再生バーはタップでその位置へ移動します。指を置いたままスライドすると時刻がついてきて、離した位置へ移動します。</p>
+        <p class="help-note">再生バーはタップでその位置へ移動します。指を置いたままスライドすると時刻がついてきて、離した位置へ移動します。ループの行の A の時刻をタップすると A へ移動します。</p>
+        <p class="help-note">ループバーは A-B の付近だけを拡大した表示です。A / B のつまみを 0.1 秒単位でドラッグでき、区切り(青い線)や再生位置(黒い線)も見えます。バーをタップするとその位置へ移動します。</p>
       </section>
 
       <section>
@@ -100,6 +101,7 @@
             <tr><td><kbd>Shift</kbd> + <kbd>←</kbd> <kbd>→</kbd></td><td>10 秒戻る / 進む</td></tr>
             <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>速度 +5% / −5%</td></tr>
             <tr><td><kbd>A</kbd> <kbd>B</kbd></td><td>今の位置を A / B にする</td></tr>
+            <tr><td><kbd>Shift</kbd> + <kbd>A</kbd></td><td>A へ移動</td></tr>
             <tr><td><kbd>R</kbd></td><td>頭に戻る</td></tr>
             <tr><td><kbd>M</kbd></td><td>＋ 区切り</td></tr>
             <tr><td><kbd>1</kbd>〜<kbd>9</kbd> <kbd>0</kbd></td><td>区間を選ぶ / 全体に戻す</td></tr>
@@ -144,6 +146,17 @@
       <div id="seek-head" class="thumb"></div>
     </div>
     <div class="scrub-times"><span id="time">0:00.0</span><span id="duration">0:00</span></div>
+    <!-- ループバー: A-B の付近だけを拡大して表示し、A / B のつまみをドラッグできる -->
+    <div id="loopbar" class="loopbar" hidden>
+      <div id="lb-track" class="lb-track" title="タップでその位置へ移動">
+        <div id="lb-range" class="lb-range"></div>
+        <div id="lb-section" class="lb-section" hidden></div>
+        <div id="lb-marks"></div>
+        <div id="lb-head" class="lb-head"></div>
+      </div>
+      <div id="lb-a" class="lb-handle" data-handle="a" role="slider" aria-label="A の位置(ドラッグで動かす)">A</div>
+      <div id="lb-b" class="lb-handle" data-handle="b" role="slider" aria-label="B の位置(ドラッグで動かす)">B</div>
+    </div>
   </div>
 
   <div class="group transport">
@@ -165,7 +178,7 @@
     <div class="group loop-rows">
       <div class="row">
         <button id="set-a" class="set-button" aria-label="今の位置を A にする" title="今の位置を A にする(A)">A</button>
-        <span id="a-time" class="row-value">—</span>
+        <button id="a-time" class="row-value time-jump" aria-label="A へ移動" title="A へ移動(Shift + A)">—</button>
         <div class="stepper">
           <button id="a-minus" aria-label="A を 0.1 秒前へ">−</button>
           <button id="a-plus" aria-label="A を 0.1 秒後ろへ">+</button>
@@ -216,15 +229,15 @@
 <script type="importmap">
 {
   "imports": {
-    "./keys.js": "./keys.js?v=eb56297ed1",
-    "./history.js": "./history.js?v=eb56297ed1",
-    "./loop.js": "./loop.js?v=eb56297ed1",
-    "./player.js": "./player.js?v=eb56297ed1",
-    "./sections.js": "./sections.js?v=eb56297ed1",
-    "./storage.js": "./storage.js?v=eb56297ed1"
+    "./keys.js": "./keys.js?v=d6f0118d69",
+    "./history.js": "./history.js?v=d6f0118d69",
+    "./loop.js": "./loop.js?v=d6f0118d69",
+    "./player.js": "./player.js?v=d6f0118d69",
+    "./sections.js": "./sections.js?v=d6f0118d69",
+    "./storage.js": "./storage.js?v=d6f0118d69"
   }
 }
 </script>
-<script type="module" src="app.js?v=eb56297ed1"></script>
+<script type="module" src="app.js?v=d6f0118d69"></script>
 </body>
 </html>
