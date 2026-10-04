@@ -86,6 +86,28 @@ export function loopWindow(range, duration) {
   return { start: Math.max(0, range.a - pad), end: duration > 0 ? Math.min(duration, end) : end };
 }
 
+// ループバーの目盛り。長い目盛りが maxMajor 本を超えない間隔を選び、その半分の間隔で短い目盛りを入れる
+const TICK_STEPS = [0.5, 1, 2, 5, 10, 15, 30, 60, 120];
+
+export function loopTicks(view, maxMajor) {
+  const span = view.end - view.start;
+  const step = TICK_STEPS.find((s) => span / s <= maxMajor) ?? TICK_STEPS[TICK_STEPS.length - 1];
+  const half = step / 2;
+  const major = [];
+  const minor = [];
+  for (let i = Math.ceil(view.start / half - EPSILON); i * half <= view.end + EPSILON; i++) {
+    (i % 2 === 0 ? major : minor).push(round2(i * half) + 0); // + 0 で -0 を 0 にそろえる
+  }
+  return { step, major, minor };
+}
+
+// ドラッグ中に出す、元の位置からの差(例: +0.3秒)
+export function formatDelta(seconds) {
+  const r = Math.round(seconds * 10) / 10;
+  const sign = r > 0 ? '+' : r < 0 ? '−' : '±';
+  return `${sign}${Math.abs(r).toFixed(1)}秒`;
+}
+
 export function shouldJump(time, range) {
   return range.a != null && range.b != null && time >= range.b;
 }

@@ -12,6 +12,8 @@ import {
   moveA,
   moveB,
   loopWindow,
+  loopTicks,
+  formatDelta,
   setA,
   setB,
   shouldJump,
@@ -47,6 +49,10 @@ let player = null;
 let dragTime = null;
 // ループバーで A / B をドラッグしている間の、仮の A-B と表示範囲。ドラッグしていないときは null
 let loopDrag = null;
+// 目盛りを描き直すかどうかの判定用(表示範囲と幅が変わったときだけ描き直す)
+let ticksKey = '';
+// 長い目盛りの間隔の目安(px)。これより詰まらないように目盛りの間隔を選ぶ
+const TICK_MIN_GAP_PX = 48;
 let lastJumpAt = 0;
 let toastTimer = 0;
 
@@ -231,10 +237,43 @@ function renderLoopbar(time, duration) {
     sectionEl.style.left = percent(section.a);
     sectionEl.style.width = `calc(${percent(section.b)} - ${percent(section.a)})`;
   }
-  if (loopDrag) {
-    $('a-time').textContent = formatTime(range.a);
-    $('b-time').textContent = formatTime(range.b);
-  }
+  renderTicks(view);
+  renderDragFeedback(range, percent);
+}
+
+// ループバーの目盛り(長い線と短い線)
+function renderTicks(view) {
+  const width = $('lb-track').clientWidth;
+  const key = `${view.start}-${view.end}-${width}`;
+  if (key === ticksKey || !width) return;
+  ticksKey = key;
+  const { major, minor } = loopTicks(view, Math.max(2, Math.floor(width / TICK_MIN_GAP_PX)));
+  const span = view.end - view.start;
+  const tick = (t, cls) => {
+    const el = document.createElement('div');
+    el.className = cls;
+    el.style.left = `${((t - view.start) / span) * 100}%`;
+    return el;
+  };
+  $('lb-ticks').replaceChildren(...major.map((t) => tick(t, 'lb-tick major')), ...minor.map((t) => tick(t, 'lb-tick')));
+}
+
+// ドラッグ中だけ: つまみの上の吹き出し(時刻と元の位置からの差)と、元の位置に残す影
+function renderDragFeedback(range, percent) {
+  const tip = $('lb-tip');
+  const ghost = $('lb-ghost');
+  tip.hidden = ghost.hidden = !loopDrag;
+  if (!loopDrag) return;
+  const now = loopDrag.which === 'a' ? range.a : range.b;
+  $('a-time').textContent = formatTime(range.a);
+  $('b-time').textContent = formatTime(range.b);
+  ghost.style.left = percent(loopDrag.origin);
+  tip.textContent = `${formatTime(now)}  ${formatDelta(now - loopDrag.origin)}`;
+  // 吹き出しがバーの端からはみ出さないよう、位置を左右で詰める
+  const trackWidth = $('lb-track').clientWidth;
+  const half = tip.offsetWidth / 2;
+  const x = (parseFloat(percent(now)) / 100) * trackWidth;
+  tip.style.left = `${Math.min(trackWidth - half, Math.max(half, x))}px`;
 }
 
 // 区切りや A/B が変わっても、選んでいた区間と同じ位置から始まる区間があれば選び続ける
@@ -467,7 +506,9 @@ function bindLoopbar() {
       e.preventDefault();
       handle.setPointerCapture(e.pointerId);
       // 表示範囲はつかんだときのまま固定する(動かすたびに範囲が変わると、つまみが指から逃げるため)
-      loopDrag = { which: handle.dataset.handle, view, range: state.range };
+      const which = handle.dataset.handle;
+      loopDrag = { which, view, range: state.range, origin: state.range[which] };
+      renderPosition();
       handle.classList.add('dragging');
     });
     handle.addEventListener('pointermove', (e) => {

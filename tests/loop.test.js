@@ -15,6 +15,8 @@ import {
   moveA,
   moveB,
   loopWindow,
+  loopTicks,
+  formatDelta,
 } from '../loop.js';
 
 const ID = 'dQw4w9WgXcQ';
@@ -193,4 +195,33 @@ test('loopWindow: ループバーに表示する範囲。A-B の前後に区間�
 
 test('loopWindow: A/B が揃っていなければ null', () => {
   assert.equal(loopWindow({ a: 1, b: null }, 60), null);
+});
+
+test('loopTicks: 長い目盛りが多くなりすぎない間隔を選び、その半分の間隔で短い目盛りを入れる', () => {
+  const t = loopTicks({ start: 8, end: 20 }, 12);
+  assert.equal(t.step, 1);
+  assert.deepEqual(t.major, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+  assert.deepEqual(t.minor, [8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 17.5, 18.5, 19.5]);
+});
+
+test('loopTicks: 短い範囲は 0.5 秒間隔、長い範囲は間隔を広げる', () => {
+  const short = loopTicks({ start: 0, end: 3.5 }, 12);
+  assert.equal(short.step, 0.5);
+  assert.deepEqual(short.major, [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5]);
+  assert.equal(loopTicks({ start: 0, end: 100 }, 10).step, 10);
+  assert.equal(loopTicks({ start: 0, end: 100 }, 6).step, 30);
+});
+
+test('loopTicks: 範囲の途中から始まるときは、間隔の倍数の位置にだけ目盛りを置く', () => {
+  const t = loopTicks({ start: 2.3, end: 5.2 }, 12);
+  assert.equal(t.step, 0.5);
+  assert.deepEqual(t.major, [2.5, 3, 3.5, 4, 4.5, 5]);
+  assert.deepEqual(t.minor, [2.75, 3.25, 3.75, 4.25, 4.75]);
+});
+
+test('formatDelta: 元の位置からの差を 0.1 秒単位で符号付きで表す', () => {
+  assert.equal(formatDelta(0.3), '+0.3秒');
+  assert.equal(formatDelta(-1.24), '−1.2秒');
+  assert.equal(formatDelta(0.04), '±0.0秒');
+  assert.equal(formatDelta(-0.04), '±0.0秒');
 });

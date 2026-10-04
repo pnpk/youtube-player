@@ -163,6 +163,9 @@ svg { display: block; }
   border-radius: 6px;
   cursor: pointer;
 }
+.lb-ticks { position: absolute; inset: 0; pointer-events: none; }
+.lb-tick { position: absolute; bottom: 0; width: 1px; height: 5px; background: var(--secondary); opacity: 0.45; }
+.lb-tick.major { height: 9px; opacity: 0.7; }
 .lb-range { position: absolute; top: 0; bottom: 0; background: var(--tint-soft); }
 .lb-section { position: absolute; top: 0; bottom: 0; background: var(--tint); opacity: 0.55; }
 .lb-mark { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--tint); }
@@ -188,7 +191,27 @@ svg { display: block; }
 }
 /* 指で触りやすいよう、見た目より広い範囲でつかめるようにする */
 .lb-handle::before { content: ""; position: absolute; inset: -8px; }
-.lb-handle.dragging { cursor: grabbing; transform: scale(1.15); }
+.lb-handle.dragging { cursor: grabbing; transform: scale(1.15); z-index: 2; }
+/* ドラッグを始めた位置に残す影 */
+.lb-ghost { opacity: 0.3; box-shadow: none; pointer-events: none; }
+/* ドラッグ中の吹き出し: つまみの上に、時刻と元の位置からの差を出す */
+.lb-tip {
+  position: absolute;
+  bottom: calc(50% + 24px);
+  z-index: 3;
+  padding: 5px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+  color: #fff;
+  background: var(--hud);
+  border-radius: 8px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
 
 .scrub-times {
   display: flex;

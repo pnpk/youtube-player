@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=d6f0118d69">
+<link rel="stylesheet" href="style.css?v=a823a9b724">
 <title>練習プレーヤー</title>
 </head>
 <body>
@@ -70,7 +70,7 @@
           <li><span class="help-icon muted"><svg><use href="#i-xmark"/></svg></span><span>URL 欄の中身を消す</span></li>
         </ul>
         <p class="help-note">再生バーはタップでその位置へ移動します。指を置いたままスライドすると時刻がついてきて、離した位置へ移動します。ループの行の A の時刻をタップすると A へ移動します。</p>
-        <p class="help-note">ループバーは A-B の付近だけを拡大した表示です。A / B のつまみを 0.1 秒単位でドラッグでき、区切り(青い線)や再生位置(黒い線)も見えます。バーをタップするとその位置へ移動します。</p>
+        <p class="help-note">ループバーは A-B の付近だけを拡大した表示です。A / B のつまみを 0.1 秒単位でドラッグでき、区切り(青い線)や再生位置(黒い線)、秒の目盛りも見えます。ドラッグ中は、つまみの上に時刻と元の位置からの差(例: +0.3秒)が出て、元の位置には薄い影が残ります。バーをタップするとその位置へ移動します。</p>
       </section>
 
       <section>
@@ -149,13 +149,16 @@
     <!-- ループバー: A-B の付近だけを拡大して表示し、A / B のつまみをドラッグできる -->
     <div id="loopbar" class="loopbar" hidden>
       <div id="lb-track" class="lb-track" title="タップでその位置へ移動">
+        <div id="lb-ticks" class="lb-ticks"></div>
         <div id="lb-range" class="lb-range"></div>
         <div id="lb-section" class="lb-section" hidden></div>
         <div id="lb-marks"></div>
         <div id="lb-head" class="lb-head"></div>
       </div>
+      <div id="lb-ghost" class="lb-handle lb-ghost" aria-hidden="true" hidden></div>
       <div id="lb-a" class="lb-handle" data-handle="a" role="slider" aria-label="A の位置(ドラッグで動かす)">A</div>
       <div id="lb-b" class="lb-handle" data-handle="b" role="slider" aria-label="B の位置(ドラッグで動かす)">B</div>
+      <div id="lb-tip" class="lb-tip" role="status" hidden></div>
     </div>
   </div>
 
@@ -229,15 +232,15 @@
 <script type="importmap">
 {
   "imports": {
-    "./keys.js": "./keys.js?v=d6f0118d69",
-    "./history.js": "./history.js?v=d6f0118d69",
-    "./loop.js": "./loop.js?v=d6f0118d69",
-    "./player.js": "./player.js?v=d6f0118d69",
-    "./sections.js": "./sections.js?v=d6f0118d69",
-    "./storage.js": "./storage.js?v=d6f0118d69"
+    "./keys.js": "./keys.js?v=a823a9b724",
+    "./history.js": "./history.js?v=a823a9b724",
+    "./loop.js": "./loop.js?v=a823a9b724",
+    "./player.js": "./player.js?v=a823a9b724",
+    "./sections.js": "./sections.js?v=a823a9b724",
+    "./storage.js": "./storage.js?v=a823a9b724"
   }
 }
 </script>
-<script type="module" src="app.js?v=d6f0118d69"></script>
+<script type="module" src="app.js?v=a823a9b724"></script>
 </body>
 </html>
