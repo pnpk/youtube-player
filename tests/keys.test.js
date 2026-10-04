@@ -33,6 +33,11 @@ test('1〜9 で区間を選び、0 で全体に戻す', () => {
   assert.deepEqual(commandForKey(key('0')), { type: 'section', index: null });
 });
 
+test('? でヘルプを開く(Shift を押しながら入力するキーボードでも)', () => {
+  assert.deepEqual(commandForKey(key('?')), { type: 'help' });
+  assert.deepEqual(commandForKey(key('?', { shiftKey: true })), { type: 'help' });
+});
+
 test('Esc で閉じる', () => {
   assert.deepEqual(commandForKey(key('Escape')), { type: 'close' });
 });

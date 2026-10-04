@@ -21,6 +21,8 @@ export function commandForKey({ key, shiftKey, metaKey, ctrlKey, altKey }) {
       return { type: 'rate', direction: -1 };
     case 'Escape':
       return { type: 'close' };
+    case '?':
+      return { type: 'help' };
   }
   if (/^[0-9]$/.test(key)) return { type: 'section', index: key === '0' ? null : Number(key) - 1 };
   const letter = LETTERS[key.toLowerCase()];

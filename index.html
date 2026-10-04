@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=7c279b3c4d">
+<link rel="stylesheet" href="style.css?v=eb56297ed1">
 <title>練習プレーヤー</title>
 </head>
 <body>
@@ -24,6 +24,7 @@
   <symbol id="i-start" viewBox="0 0 24 24"><rect x="4.5" y="5" width="2.6" height="14" rx="1" fill="currentColor"/><path d="M19.5 6.3v11.4a1 1 0 0 1-1.55.83l-8.6-5.7a1 1 0 0 1 0-1.66l8.6-5.7a1 1 0 0 1 1.55.83z" fill="currentColor"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-xmark" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M8.6 8.6l6.8 6.8m0-6.8l-6.8 6.8" stroke="var(--xmark-stroke, #fff)" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1.2" fill="currentColor"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
 </svg>
 
@@ -40,6 +41,87 @@
   </div>
 </div>
 
+<div id="help" class="sheet-backdrop help-backdrop" hidden>
+  <div class="sheet help-sheet" role="dialog" aria-label="ヘルプ">
+    <header class="sheet-head">
+      <h2>ヘルプ</h2>
+      <button id="help-close" class="text-button strong" title="閉じる(Esc)">完了</button>
+    </header>
+    <div class="help-body">
+      <section>
+        <h3>基本の使い方</h3>
+        <ol class="group help-steps">
+          <li>上の欄に YouTube の URL を貼り付けます。貼り付けるとすぐ読み込みます(手で入力したときは「開く」)。</li>
+          <li><span class="help-icon play"><svg><use href="#i-play"/></svg></span> で再生し、練習したいフレーズの頭で <b class="help-chip">A</b>、終わりで <b class="help-chip">B</b> を押します。B を押すとループが始まり、B を過ぎるたびに A へ戻ります。</li>
+          <li>「速度」の − / + で速度を下げます(5% ずつ、50〜100%)。数字をタップすると 100% に戻ります。</li>
+          <li>位置がずれていたら、A / B の横の − / + で 0.1 秒ずつ直します。</li>
+        </ol>
+        <p class="help-note">ループをやめるときは、「ループ」の見出しの右の「解除」を押します。</p>
+      </section>
+
+      <section>
+        <h3>ボタン</h3>
+        <ul class="group help-list">
+          <li><span class="help-icon"><svg><use href="#i-back3"/></svg></span><span>3 秒戻る</span></li>
+          <li><span class="help-icon play"><svg><use href="#i-play"/></svg></span><span>再生 / 一時停止</span></li>
+          <li><span class="help-icon"><svg><use href="#i-start"/></svg></span><span>頭に戻る(選んだ区間の頭 → A → 動画の先頭の順)</span></li>
+          <li><span class="help-icon"><svg><use href="#i-clock"/></svg></span><span>履歴</span></li>
+          <li><span class="help-icon"><svg><use href="#i-help"/></svg></span><span>このヘルプ</span></li>
+          <li><span class="help-icon muted"><svg><use href="#i-xmark"/></svg></span><span>URL 欄の中身を消す</span></li>
+        </ul>
+        <p class="help-note">再生バーはタップでその位置へ移動します。指を置いたままスライドすると時刻がついてきて、離した位置へ移動します。</p>
+      </section>
+
+      <section>
+        <h3>区切り</h3>
+        <ul class="group help-text">
+          <li>再生しながら「＋ 区切り」を押すと、その位置で A-B を区間に分けます。</li>
+          <li>「全体 / 1 / 2 …」で区間を選ぶと、その区間だけをループします。「全体」で元に戻ります。</li>
+          <li>「− 区切り」は、今の位置にいちばん近い区切りを消します。</li>
+          <li>A / B を決める前でも押せます。そのときは A が動画の先頭、B が動画の最後になり、あとで A / B を押すとその位置に移ります。</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>履歴</h3>
+        <ul class="group help-text">
+          <li>開いた動画は新しい順に 30 件まで残ります。選ぶと、前回の A / B・速度・区切りも戻ります。</li>
+          <li>設定は自動で保存されます。ページを開き直すと、最後の動画がその設定のまま戻ります。</li>
+          <li>履歴はこの端末のブラウザの中だけに保存されます。</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>キーボード操作</h3>
+        <table class="group help-keys">
+          <tbody>
+            <tr><td><kbd>スペース</kbd></td><td>再生 / 一時停止</td></tr>
+            <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>3 秒戻る / 進む</td></tr>
+            <tr><td><kbd>Shift</kbd> + <kbd>←</kbd> <kbd>→</kbd></td><td>10 秒戻る / 進む</td></tr>
+            <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>速度 +5% / −5%</td></tr>
+            <tr><td><kbd>A</kbd> <kbd>B</kbd></td><td>今の位置を A / B にする</td></tr>
+            <tr><td><kbd>R</kbd></td><td>頭に戻る</td></tr>
+            <tr><td><kbd>M</kbd></td><td>＋ 区切り</td></tr>
+            <tr><td><kbd>1</kbd>〜<kbd>9</kbd> <kbd>0</kbd></td><td>区間を選ぶ / 全体に戻す</td></tr>
+            <tr><td><kbd>?</kbd></td><td>このヘルプ</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>ヘルプ・履歴を閉じる</td></tr>
+          </tbody>
+        </table>
+        <p class="help-note">URL 欄に入力しているあいだは効きません。動画の画面をクリックするとキー入力が YouTube 側に移るので、動画の外側をクリックしてから使ってください。</p>
+      </section>
+
+      <section>
+        <h3>うまくいかないとき</h3>
+        <ul class="group help-text">
+          <li><b>広告が出る</b>: ホーム画面のアイコンからではなく、Safari のブックマークから開いてください。</li>
+          <li><b>「埋め込み再生が許可されていません」</b>: 投稿者が埋め込みを禁止している動画です。YouTube アプリで見てください。</li>
+          <li><b>B から A に戻るときに一瞬止まる</b>: YouTube の読み込み直しのためで、なくせません。頭が途切れるときは A を少し手前にずらしてください。</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>
+
 <section class="media">
   <form id="load-form" class="search">
     <svg class="search-icon" aria-hidden="true"><use href="#i-link"/></svg>
@@ -47,6 +129,7 @@
     <button type="button" id="url-clear" class="icon-button url-clear" aria-label="URL を消す"><svg><use href="#i-xmark"/></svg></button>
     <button type="submit" class="text-button open-button">開く</button>
     <button type="button" id="history-open" class="icon-button tinted" aria-label="履歴" title="履歴"><svg><use href="#i-clock"/></svg></button>
+    <button type="button" id="help-open" class="icon-button tinted" aria-label="ヘルプ" title="ヘルプ(?)"><svg><use href="#i-help"/></svg></button>
   </form>
 
   <div class="video"><div id="player"></div></div>
@@ -133,15 +216,15 @@
 <script type="importmap">
 {
   "imports": {
-    "./keys.js": "./keys.js?v=7c279b3c4d",
-    "./history.js": "./history.js?v=7c279b3c4d",
-    "./loop.js": "./loop.js?v=7c279b3c4d",
-    "./player.js": "./player.js?v=7c279b3c4d",
-    "./sections.js": "./sections.js?v=7c279b3c4d",
-    "./storage.js": "./storage.js?v=7c279b3c4d"
+    "./keys.js": "./keys.js?v=eb56297ed1",
+    "./history.js": "./history.js?v=eb56297ed1",
+    "./loop.js": "./loop.js?v=eb56297ed1",
+    "./player.js": "./player.js?v=eb56297ed1",
+    "./sections.js": "./sections.js?v=eb56297ed1",
+    "./storage.js": "./storage.js?v=eb56297ed1"
   }
 }
 </script>
-<script type="module" src="app.js?v=7c279b3c4d"></script>
+<script type="module" src="app.js?v=eb56297ed1"></script>
 </body>
 </html>

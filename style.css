@@ -313,6 +313,56 @@ svg { display: block; }
 .history-remove { min-height: 44px; padding: 0 16px; font-size: 15px; color: #ff3b30; }
 @media (prefers-color-scheme: dark) { .history-remove { color: #ff453a; } }
 
+/* --- ヘルプ --- */
+.help-sheet { gap: 8px; }
+.help-body { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
+.help-body section + section { margin-top: 22px; }
+.help-body h3 { margin: 0 16px 6px; font-size: 13px; font-weight: 400; color: var(--secondary); }
+.help-body .group { margin: 0; padding: 0; list-style: none; }
+.help-body li, .help-keys td { font-size: 16px; line-height: 1.5; }
+.help-steps { counter-reset: step; }
+.help-steps li, .help-text li { position: relative; padding: 11px 16px; }
+.help-steps li { padding-left: 46px; counter-increment: step; }
+.help-steps li::before {
+  content: counter(step);
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 22px;
+  text-align: center;
+  color: #fff;
+  background: var(--tint);
+  border-radius: 50%;
+}
+.help-steps li + li, .help-text li + li, .help-list li + li { border-top: 0.5px solid var(--separator); }
+.help-list li { display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 6px 16px; }
+.help-icon { display: inline-grid; place-items: center; flex: 0 0 auto; width: 28px; height: 28px; color: var(--tint); vertical-align: middle; }
+.help-icon svg { width: 22px; height: 22px; }
+.help-icon.play { width: 26px; height: 26px; color: #fff; background: var(--tint); border-radius: 50%; }
+.help-icon.play svg { width: 13px; height: 13px; margin-left: 2px; }
+.help-icon.muted { --xmark-stroke: var(--group); color: var(--secondary); }
+.help-chip { display: inline-block; min-width: 26px; padding: 0 6px; font-size: 14px; line-height: 22px; text-align: center; color: #fff; background: var(--tint); border-radius: 6px; }
+.help-note { margin: 6px 16px 0; font-size: 13px; line-height: 1.5; color: var(--secondary); }
+.help-keys { width: 100%; border-collapse: collapse; overflow: hidden; }
+.help-keys td { padding: 9px 16px; }
+.help-keys td:first-child { width: 1%; padding-right: 12px; white-space: nowrap; }
+.help-keys tr + tr td { border-top: 0.5px solid var(--separator); }
+kbd {
+  display: inline-block;
+  min-width: 26px;
+  padding: 1px 7px;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: center;
+  background: var(--fill);
+  border-radius: 6px;
+  box-shadow: inset 0 -1px 0 var(--separator);
+}
+
 /* iPad 縦など(幅 600px 以上): A と B を横に並べ、その下に速度と区切りを左右に並べる */
 @media (min-width: 600px) {
   :root { --row: 60px; --gap: 14px; }
@@ -325,6 +375,9 @@ svg { display: block; }
   .loop-rows .row + .row { border-top: 0; border-left: 0.5px solid var(--separator); }
   .transport { height: 88px; }
   .play-button { width: 68px; height: 68px; }
+  /* ヘルプは画面中央に出るフォームシート */
+  .help-backdrop { align-items: center; padding: 24px; }
+  .help-sheet { height: auto; max-height: min(760px, 100%); padding-bottom: 16px; border-radius: 14px; }
 }
 
 /* iPad 横・PC・スマホ横(横長かつ幅 700px 以上): 左に動画、右に操作のカード */

@@ -348,10 +348,15 @@ function bindControls() {
   $('history-close').addEventListener('click', () => {
     $('history').hidden = true;
   });
-  // シートの外側(暗くなった部分)をタップしても閉じる
-  $('history').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) $('history').hidden = true;
+  $('help-close').addEventListener('click', () => {
+    $('help').hidden = true;
   });
+  // シートの外側(暗くなった部分)をタップしても閉じる
+  for (const id of ['history', 'help']) {
+    $(id).addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) $(id).hidden = true;
+    });
+  }
   $('history-list').addEventListener('click', (e) => {
     const remove = e.target.closest('[data-remove]');
     if (remove) {
@@ -424,15 +429,21 @@ function bindKeyboard() {
     if (e.target instanceof HTMLInputElement) return; // URL 欄の入力を優先する
     const command = commandForKey(e);
     if (!command) return;
-    if (!$('history').hidden) {
-      // 履歴のシートを開いている間は Esc で閉じるだけ
-      if (command.type === 'close') {
+    const openSheet = ['history', 'help'].map($).find((sheet) => !sheet.hidden);
+    if (openSheet) {
+      // 履歴やヘルプを開いている間は Esc で閉じるだけ(ヘルプは ? でも閉じる)
+      if (command.type === 'close' || (command.type === 'help' && openSheet.id === 'help')) {
         e.preventDefault();
-        $('history').hidden = true;
+        openSheet.hidden = true;
       }
       return;
     }
     if (command.type === 'close') return;
+    if (command.type === 'help') {
+      e.preventDefault();
+      $('help').hidden = false;
+      return;
+    }
     e.preventDefault(); // スペースや矢印キーでページがスクロールしないように
     // 押しっぱなしのくりかえしは、移動と速度だけ受け付ける(スペースの押しっぱなしで再生と停止を往復しないように)
     if (e.repeat && command.type !== 'seekBy' && command.type !== 'rate') return;
@@ -496,6 +507,10 @@ async function main() {
         loadVideo(videoId);
       }
     });
+  });
+  // ヘルプはプレーヤーの準備を待たずに開けるようにする
+  $('help-open').addEventListener('click', () => {
+    $('help').hidden = false;
   });
   $('url-clear').addEventListener('click', () => {
     $('url').value = '';
