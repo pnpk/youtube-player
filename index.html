@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=cad68c7bc4">
+<link rel="stylesheet" href="style.css?v=7c279b3c4d">
 <title>練習プレーヤー</title>
 </head>
 <body>
@@ -33,7 +33,7 @@
   <div class="sheet" role="dialog" aria-label="再生履歴">
     <header class="sheet-head">
       <h2>履歴</h2>
-      <button id="history-close" class="text-button strong">完了</button>
+      <button id="history-close" class="text-button strong" title="閉じる(Esc)">完了</button>
     </header>
     <p id="history-empty" class="history-empty">まだ履歴はありません</p>
     <ul id="history-list" class="history-list group"></ul>
@@ -46,7 +46,7 @@
     <input id="url" type="text" inputmode="url" enterkeyhint="go" placeholder="YouTube の URL を貼り付け" autocomplete="off" autocapitalize="off" spellcheck="false">
     <button type="button" id="url-clear" class="icon-button url-clear" aria-label="URL を消す"><svg><use href="#i-xmark"/></svg></button>
     <button type="submit" class="text-button open-button">開く</button>
-    <button type="button" id="history-open" class="icon-button tinted" aria-label="履歴"><svg><use href="#i-clock"/></svg></button>
+    <button type="button" id="history-open" class="icon-button tinted" aria-label="履歴" title="履歴"><svg><use href="#i-clock"/></svg></button>
   </form>
 
   <div class="video"><div id="player"></div></div>
@@ -64,12 +64,12 @@
   </div>
 
   <div class="group transport">
-    <button id="rewind" class="icon-button tinted transport-side" aria-label="3 秒戻る"><svg><use href="#i-back3"/></svg></button>
-    <button id="play" class="play-button" aria-label="再生">
+    <button id="rewind" class="icon-button tinted transport-side" aria-label="3 秒戻る" title="3 秒戻る(←)"><svg><use href="#i-back3"/></svg></button>
+    <button id="play" class="play-button" aria-label="再生" title="再生 / 一時停止(スペース)">
       <svg class="icon-play"><use href="#i-play"/></svg>
       <svg class="icon-pause"><use href="#i-pause"/></svg>
     </button>
-    <button id="to-a" class="icon-button tinted transport-side" aria-label="ループの頭に戻る"><svg><use href="#i-start"/></svg></button>
+    <button id="to-a" class="icon-button tinted transport-side" aria-label="ループの頭に戻る" title="頭に戻る(R)"><svg><use href="#i-start"/></svg></button>
   </div>
 </section>
 
@@ -81,7 +81,7 @@
     </div>
     <div class="group loop-rows">
       <div class="row">
-        <button id="set-a" class="set-button" aria-label="今の位置を A にする">A</button>
+        <button id="set-a" class="set-button" aria-label="今の位置を A にする" title="今の位置を A にする(A)">A</button>
         <span id="a-time" class="row-value">—</span>
         <div class="stepper">
           <button id="a-minus" aria-label="A を 0.1 秒前へ">−</button>
@@ -89,7 +89,7 @@
         </div>
       </div>
       <div class="row">
-        <button id="set-b" class="set-button" aria-label="今の位置を B にする">B</button>
+        <button id="set-b" class="set-button" aria-label="今の位置を B にする" title="今の位置を B にする(B)">B</button>
         <span id="b-time" class="row-value">—</span>
         <div class="stepper">
           <button id="b-minus" aria-label="B を 0.1 秒前へ">−</button>
@@ -103,10 +103,10 @@
     <div class="block-head"><h3>速度</h3></div>
     <div class="group">
       <div class="row">
-        <button id="rate-value" class="row-value rate-value" aria-label="速度を 100% に戻す">100%</button>
+        <button id="rate-value" class="row-value rate-value" aria-label="速度を 100% に戻す" title="速度を 100% に戻す">100%</button>
         <div class="stepper">
-          <button id="rate-down" aria-label="速度を 5% 下げる">−</button>
-          <button id="rate-up" aria-label="速度を 5% 上げる">+</button>
+          <button id="rate-down" aria-label="速度を 5% 下げる" title="速度を 5% 下げる(↓)">−</button>
+          <button id="rate-up" aria-label="速度を 5% 上げる" title="速度を 5% 上げる(↑)">+</button>
         </div>
       </div>
     </div>
@@ -120,7 +120,7 @@
         <p id="section-hint" class="section-hint">「＋ 区切り」で区間に分けられます</p>
       </div>
       <div class="actions">
-        <button id="marker-add" class="text-button" aria-label="今の位置に区切りを入れる">＋ 区切り</button>
+        <button id="marker-add" class="text-button" aria-label="今の位置に区切りを入れる" title="今の位置に区切りを入れる(M)">＋ 区切り</button>
         <button id="marker-remove" class="text-button" aria-label="今の位置にいちばん近い区切りを消す">− 区切り</button>
       </div>
     </div>
@@ -133,14 +133,15 @@
 <script type="importmap">
 {
   "imports": {
-    "./history.js": "./history.js?v=cad68c7bc4",
-    "./loop.js": "./loop.js?v=cad68c7bc4",
-    "./player.js": "./player.js?v=cad68c7bc4",
-    "./sections.js": "./sections.js?v=cad68c7bc4",
-    "./storage.js": "./storage.js?v=cad68c7bc4"
+    "./keys.js": "./keys.js?v=7c279b3c4d",
+    "./history.js": "./history.js?v=7c279b3c4d",
+    "./loop.js": "./loop.js?v=7c279b3c4d",
+    "./player.js": "./player.js?v=7c279b3c4d",
+    "./sections.js": "./sections.js?v=7c279b3c4d",
+    "./storage.js": "./storage.js?v=7c279b3c4d"
   }
 }
 </script>
-<script type="module" src="app.js?v=cad68c7bc4"></script>
+<script type="module" src="app.js?v=7c279b3c4d"></script>
 </body>
 </html>

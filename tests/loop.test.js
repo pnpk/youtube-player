@@ -11,6 +11,7 @@ import {
   stepRate,
   isValidRate,
   rewind,
+  seekBy,
 } from '../loop.js';
 
 const ID = 'dQw4w9WgXcQ';
@@ -157,4 +158,12 @@ test('rewind: 3 秒戻す。0 より前には行かない', () => {
   assert.equal(rewind(10), 7);
   assert.equal(rewind(2), 0);
   assert.equal(rewind(10, 5), 5);
+});
+
+test('seekBy: 前後に動かす。0 より前・動画の長さより後ろには行かない', () => {
+  assert.equal(seekBy(10, 3, 60), 13);
+  assert.equal(seekBy(10, -3, 60), 7);
+  assert.equal(seekBy(1, -3, 60), 0);
+  assert.equal(seekBy(58, 10, 60), 60);
+  assert.equal(seekBy(58, 10, 0), 68, '長さが不明なら上限なし');
 });

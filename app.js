@@ -8,6 +8,7 @@ import {
   nudgeB,
   parseVideoId,
   rewind,
+  seekBy,
   setA,
   setB,
   shouldJump,
@@ -17,6 +18,7 @@ import { PLAYER_STATE, createPlayer, isPlayingState } from './player.js';
 import { openVideo, removeEntry, updateEntry } from './history.js';
 import { MAX_MARKERS, findSection, loopRange, placeMarker, pruneMarkers, removeNearestMarker, restartPoint, sectionsOf } from './sections.js';
 import { loadHistory, saveHistory } from './storage.js';
+import { commandForKey } from './keys.js';
 
 const TICK_MS = 50;
 // seekTo 直後は getCurrentTime が古い値を返すことがあり、二重に戻ると間が伸びるので少し待つ
@@ -141,6 +143,7 @@ function renderSections() {
       chip.dataset.section = index ?? '';
       chip.textContent = index == null ? '全体' : String(index + 1);
       chip.setAttribute('aria-pressed', String(index === state.selected));
+      chip.title = index == null ? '全体(0)' : `区間 ${index + 1}(${index + 1})`;
       return chip;
     }),
   );
@@ -287,6 +290,56 @@ function handleLoadSubmit(e) {
   loadVideo(videoId);
 }
 
+// --- ボタンとキーボードの両方から呼ぶ操作 ---
+function togglePlay() {
+  if (player.isPlaying()) player.pause();
+  else player.play();
+}
+
+function restart() {
+  player.seek(restartPoint(state.range, state.markers, state.selected));
+  lastJumpAt = performance.now();
+  player.play();
+}
+
+function setAHere() {
+  if (!state.videoId) return;
+  updateRange(setA(state.range, player.time()));
+}
+
+function setBHere() {
+  if (!state.videoId) return;
+  const next = setB(state.range, player.time());
+  if (!next) {
+    showToast('A より後ろで押してください');
+    return;
+  }
+  updateRange(next);
+  jumpToLoopStart();
+}
+
+function addMarkerHere() {
+  if (!state.videoId) return;
+  const placed = placeMarker(state.range, state.markers, player.time(), player.duration());
+  if (placed) {
+    setLoop(placed.range, placed.markers);
+  } else if (state.markers.length >= MAX_MARKERS) {
+    showToast(`区切りは ${MAX_MARKERS} 個までです`);
+  } else {
+    showToast('A と B の間で押してください');
+  }
+}
+
+// index は区間の番号(0 始まり)。null なら全体。区切りがないときや、ない番号のときは何もしない
+function selectSection(index) {
+  const count = sectionsOf(state.range, state.markers).length;
+  if (count < 2 || (index != null && index >= count)) return;
+  state.selected = index;
+  renderControls();
+  jumpToLoopStart();
+  player.play();
+}
+
 function bindControls() {
   $('history-open').addEventListener('click', () => {
     renderHistory();
@@ -314,28 +367,12 @@ function bindControls() {
     }
   });
 
-  $('play').addEventListener('click', () => (player.isPlaying() ? player.pause() : player.play()));
+  $('play').addEventListener('click', togglePlay);
   $('rewind').addEventListener('click', () => player.seek(rewind(player.time())));
-  $('to-a').addEventListener('click', () => {
-    player.seek(restartPoint(state.range, state.markers, state.selected));
-    lastJumpAt = performance.now();
-    player.play();
-  });
+  $('to-a').addEventListener('click', restart);
 
-  $('set-a').addEventListener('click', () => {
-    if (!state.videoId) return;
-    updateRange(setA(state.range, player.time()));
-  });
-  $('set-b').addEventListener('click', () => {
-    if (!state.videoId) return;
-    const next = setB(state.range, player.time());
-    if (!next) {
-      showToast('A より後ろで押してください');
-      return;
-    }
-    updateRange(next);
-    jumpToLoopStart();
-  });
+  $('set-a').addEventListener('click', setAHere);
+  $('set-b').addEventListener('click', setBHere);
   $('a-minus').addEventListener('click', () => updateRange(nudgeA(state.range, -NUDGE)));
   $('a-plus').addEventListener('click', () => updateRange(nudgeA(state.range, NUDGE)));
   $('b-minus').addEventListener('click', () => updateRange(nudgeB(state.range, -NUDGE, player.duration())));
@@ -346,29 +383,65 @@ function bindControls() {
   $('rate-up').addEventListener('click', () => changeRate(stepRate(state.rate, 1)));
   $('rate-value').addEventListener('click', () => changeRate(DEFAULT_RATE));
 
-  $('marker-add').addEventListener('click', () => {
-    const placed = placeMarker(state.range, state.markers, player.time(), player.duration());
-    if (placed) {
-      setLoop(placed.range, placed.markers);
-    } else if (state.markers.length >= MAX_MARKERS) {
-      showToast(`区切りは ${MAX_MARKERS} 個までです`);
-    } else {
-      showToast('A と B の間で押してください');
-    }
-  });
+  $('marker-add').addEventListener('click', addMarkerHere);
   $('marker-remove').addEventListener('click', () => {
     setLoop(state.range, removeNearestMarker(state.markers, player.time()));
   });
   $('section-chips').addEventListener('click', (e) => {
     const chip = e.target.closest('[data-section]');
     if (!chip) return;
-    state.selected = chip.dataset.section === '' ? null : Number(chip.dataset.section);
-    renderControls();
-    jumpToLoopStart();
-    player.play();
+    selectSection(chip.dataset.section === '' ? null : Number(chip.dataset.section));
   });
 
   bindSeekDrag();
+  bindKeyboard();
+}
+
+function runCommand(command) {
+  switch (command.type) {
+    case 'toggle':
+      return togglePlay();
+    case 'seekBy':
+      return player.seek(seekBy(player.time(), command.seconds, player.duration()));
+    case 'rate':
+      return changeRate(stepRate(state.rate, command.direction));
+    case 'setA':
+      return setAHere();
+    case 'setB':
+      return setBHere();
+    case 'restart':
+      return restart();
+    case 'addMarker':
+      return addMarkerHere();
+    case 'section':
+      return selectSection(command.index);
+  }
+}
+
+// キーボード操作(PC 向け)。割り当ては keys.js
+function bindKeyboard() {
+  document.addEventListener('keydown', (e) => {
+    if (e.target instanceof HTMLInputElement) return; // URL 欄の入力を優先する
+    const command = commandForKey(e);
+    if (!command) return;
+    if (!$('history').hidden) {
+      // 履歴のシートを開いている間は Esc で閉じるだけ
+      if (command.type === 'close') {
+        e.preventDefault();
+        $('history').hidden = true;
+      }
+      return;
+    }
+    if (command.type === 'close') return;
+    e.preventDefault(); // スペースや矢印キーでページがスクロールしないように
+    // 押しっぱなしのくりかえしは、移動と速度だけ受け付ける(スペースの押しっぱなしで再生と停止を往復しないように)
+    if (e.repeat && command.type !== 'seekBy' && command.type !== 'rate') return;
+    runCommand(command);
+  });
+  // ボタンにフォーカスがあると、スペースを離したときにそのボタンも押されてしまうので止める
+  document.addEventListener('keyup', (e) => {
+    if (e.key === ' ' && !(e.target instanceof HTMLInputElement)) e.preventDefault();
+  });
 }
 
 // 再生バー: 指を置いてスライドしている間は表示だけ動かし、離した位置へ移動する(タップでも移動できる)

@@ -81,6 +81,12 @@ export function isValidRate(value) {
   return Math.abs(steps - Math.round(steps)) < 1e-6;
 }
 
+// 前後に動かす。動画の長さが不明(0)なら上限なし
+export function seekBy(time, delta, duration) {
+  const moved = Math.max(0, time + delta);
+  return duration > 0 ? Math.min(duration, moved) : moved;
+}
+
 export function rewind(time, seconds = REWIND_SECONDS) {
   return Math.max(0, time - seconds);
 }
