@@ -14,6 +14,7 @@ import {
   loopWindow,
   loopTicks,
   formatDelta,
+  clampToLoop,
   setA,
   setB,
   shouldJump,
@@ -562,18 +563,20 @@ function bindLoopbar() {
     handle.addEventListener('pointerup', finish);
     handle.addEventListener('pointercancel', finish);
   }
-  // バー(つまみ以外)を指でスライドすると、再生位置の線と時刻だけが指についてきて、離した位置へ移動する(タップでも移動)
+  // バー(つまみ以外)を指でスライドすると、再生位置の線と時刻だけが指についてきて、離した位置へ移動する(タップでも移動)。
+  // 移動先は A-B の範囲に収める
   let scrubView = null;
+  const scrubTimeAt = (clientX) => clampToLoop(timeAt(clientX, scrubView), state.range);
   track.addEventListener('pointerdown', (e) => {
     scrubView = loopWindow(state.range, player.duration());
     if (!scrubView) return;
     track.setPointerCapture(e.pointerId);
-    dragTime = timeAt(e.clientX, scrubView);
+    dragTime = scrubTimeAt(e.clientX);
     renderPosition();
   });
   track.addEventListener('pointermove', (e) => {
     if (!scrubView) return;
-    dragTime = timeAt(e.clientX, scrubView);
+    dragTime = scrubTimeAt(e.clientX);
     renderPosition();
   });
   track.addEventListener('pointerup', () => {

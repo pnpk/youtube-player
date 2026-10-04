@@ -17,6 +17,7 @@ import {
   loopWindow,
   loopTicks,
   formatDelta,
+  clampToLoop,
 } from '../loop.js';
 
 const ID = 'dQw4w9WgXcQ';
@@ -224,4 +225,12 @@ test('formatDelta: 元の位置からの差を 0.1 秒単位で符号付きで�
   assert.equal(formatDelta(-1.24), '−1.2秒');
   assert.equal(formatDelta(0.04), '±0.0秒');
   assert.equal(formatDelta(-0.04), '±0.0秒');
+});
+
+test('clampToLoop: ループバーでの移動先を A から B の 0.1 秒手前までに収める', () => {
+  const range = { a: 5, b: 10 };
+  assert.equal(clampToLoop(7, range), 7);
+  assert.equal(clampToLoop(3, range), 5);
+  assert.equal(clampToLoop(10, range), 9.9);
+  assert.equal(clampToLoop(12, range), 9.9);
 });

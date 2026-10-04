@@ -108,6 +108,11 @@ export function formatDelta(seconds) {
   return `${sign}${Math.abs(r).toFixed(1)}秒`;
 }
 
+// ループバーでの移動先を A から B の 0.1 秒手前までに収める(B ちょうどだと、すぐ A に戻ってしまうため)
+export function clampToLoop(time, range) {
+  return Math.min(Math.max(time, range.a), round2(range.b - MIN_GAP));
+}
+
 export function shouldJump(time, range) {
   return range.a != null && range.b != null && time >= range.b;
 }
