@@ -5,6 +5,7 @@ import {
   addMarker,
   findSection,
   loopRange,
+  moveMarker,
   placeMarker,
   restartPoint,
   sectionColor,
@@ -111,4 +112,22 @@ test('sectionColor: 区間の番号(0 始まり)から色の CSS 変数を決め
   assert.equal(sectionColor(0), 'var(--sec-1)');
   assert.equal(sectionColor(9), 'var(--sec-10)');
   assert.equal(sectionColor(10), 'var(--sec-1)');
+});
+
+test('moveMarker: 指定した区切りを 0.1 秒単位で動かす', () => {
+  assert.deepEqual(moveMarker(AB, [3, 7], 0, 4.04), [4, 7]);
+  assert.deepEqual(moveMarker(AB, [3, 7], 1, 5.56), [3, 5.6]);
+});
+
+test('moveMarker: 隣の区切りや A / B から 0.1 秒以上離れた範囲に収める(追い越さない)', () => {
+  assert.deepEqual(moveMarker(AB, [3, 7], 0, 9), [6.9, 7]);
+  assert.deepEqual(moveMarker(AB, [3, 7], 0, -5), [0.1, 7]);
+  assert.deepEqual(moveMarker(AB, [3, 7], 1, 20), [3, 9.9]);
+  assert.deepEqual(moveMarker(AB, [3, 7], 1, 1), [3, 3.1]);
+});
+
+test('moveMarker: 範囲外の番号や、A/B が揃っていないときは同じ配列を返す', () => {
+  const markers = [3, 7];
+  assert.equal(moveMarker(AB, markers, 5, 4), markers);
+  assert.equal(moveMarker({ a: 0, b: null }, markers, 0, 4), markers);
 });

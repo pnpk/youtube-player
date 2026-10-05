@@ -25,7 +25,7 @@ import { createAudioPlayer } from './audio-player.js';
 import { fileId, fileSizeOf, formatBytes, openMedia, removeEntry, titleFromFileName, updateEntry } from './history.js';
 import { STORE_LIMIT_BYTES, deleteMedia, findOrphans, getFile, getPeaks, listFiles, pickEvictions, putFile, putPeaks } from './media-store.js';
 import { decodePeaks, drawWaveform } from './waveform.js';
-import { MAX_MARKERS, findSection, loopRange, placeMarker, pruneMarkers, removeNearestMarker, restartPoint, sectionColor, sectionsOf } from './sections.js';
+import { MAX_MARKERS, findSection, loopRange, moveMarker, placeMarker, pruneMarkers, removeNearestMarker, restartPoint, sectionColor, sectionsOf } from './sections.js';
 import { loadHistory, saveHistory } from './storage.js';
 import { commandForKey } from './keys.js';
 
@@ -304,8 +304,31 @@ function renderLoopbar(time, duration) {
   $('lb-head').hidden = time < view.start || time > view.end;
   renderLoopbarWave(view, duration);
   renderBands(range, percent);
+  renderMarkerHandles(range, percent);
   renderTicks(view);
   renderDragFeedback(range, percent);
+}
+
+// 区切りのつまみ(ループバーの上でドラッグできる)。ドラッグ中は仮の区切りの位置を使う
+function renderMarkerHandles(range, percent) {
+  const markers = (loopDrag?.markers ?? state.markers).filter((m) => m > range.a && m < range.b);
+  const box = $('lb-mhandles');
+  if (box.children.length !== markers.length) {
+    box.replaceChildren(
+      ...markers.map((_, i) => {
+        const handle = document.createElement('div');
+        handle.className = 'lb-mhandle';
+        handle.dataset.index = String(i);
+        handle.setAttribute('role', 'slider');
+        handle.setAttribute('aria-label', `区切り ${i + 1} の位置(ドラッグで動かす)`);
+        return handle;
+      }),
+    );
+  }
+  [...box.children].forEach((handle, i) => {
+    handle.style.left = percent(markers[i]);
+    handle.classList.toggle('dragging', loopDrag?.which === 'marker' && loopDrag.index === i);
+  });
 }
 
 // CSS 変数(区間の色など)を、canvas で使える色の文字列にする
@@ -369,7 +392,7 @@ function setWaveStatus(text) {
 
 // ループバーの区間: 区間ごとの色で塗り分け、帯の中に番号を出す。選んでいる区間だけ濃くする
 function renderBands(range, percent) {
-  const markers = state.markers.filter((m) => m > range.a && m < range.b);
+  const markers = (loopDrag?.markers ?? state.markers).filter((m) => m > range.a && m < range.b);
   const sections = markers.length ? sectionsOf(range, markers) : [];
   $('lb-range').hidden = sections.length > 0;
   const bands = $('lb-bands');
@@ -418,9 +441,10 @@ function renderDragFeedback(range, percent) {
   const ghost = $('lb-ghost');
   tip.hidden = ghost.hidden = !loopDrag;
   if (!loopDrag) return;
-  const now = loopDrag.which === 'a' ? range.a : range.b;
+  const now = loopDrag.which === 'marker' ? loopDrag.markers[loopDrag.index] : range[loopDrag.which];
   $('a-time').textContent = formatTime(range.a);
   $('b-time').textContent = formatTime(range.b);
+  ghost.classList.toggle('marker', loopDrag.which === 'marker');
   ghost.style.left = percent(loopDrag.origin);
   tip.textContent = `${formatTime(now)}  ${formatDelta(now - loopDrag.origin)}`;
   // 吹き出しがバーの端からはみ出さないよう、位置を左右で詰める
@@ -879,6 +903,35 @@ function bindLoopbar() {
     handle.addEventListener('pointerup', finish);
     handle.addEventListener('pointercancel', finish);
   }
+  // 区切りのつまみ: つまみは描き直されるので、まとめて受け取る。指を離したときに確定する(選んでいる区間の番号は変えない)
+  const markerBox = $('lb-mhandles');
+  markerBox.addEventListener('pointerdown', (e) => {
+    const handle = e.target.closest('.lb-mhandle');
+    const view = loopWindow(state.range, player.duration());
+    if (!handle || !view) return;
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    const index = Number(handle.dataset.index);
+    loopDrag = { which: 'marker', index, view, range: state.range, markers: state.markers, origin: state.markers[index] };
+    renderPosition();
+  });
+  markerBox.addEventListener('pointermove', (e) => {
+    if (loopDrag?.which !== 'marker') return;
+    loopDrag.markers = moveMarker(loopDrag.range, loopDrag.markers, loopDrag.index, timeAt(e.clientX, loopDrag.view));
+    renderPosition();
+  });
+  const finishMarker = () => {
+    if (loopDrag?.which !== 'marker') return;
+    const { markers } = loopDrag;
+    loopDrag = null;
+    state.markers = markers;
+    persist();
+    renderControls();
+    renderPosition();
+  };
+  markerBox.addEventListener('pointerup', finishMarker);
+  markerBox.addEventListener('pointercancel', finishMarker);
+
   // バー(つまみ以外)をタップ・スライドすると、その位置へ移動する。移動先は A-B の範囲に収める
   bindScrub(track, (clientX) => {
     const view = loopWindow(state.range, player.duration());

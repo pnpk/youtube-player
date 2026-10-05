@@ -277,8 +277,25 @@ svg { display: block; }
 /* 指で触りやすいよう、見た目より広い範囲でつかめるようにする */
 .lb-handle::before { content: ""; position: absolute; inset: -8px; }
 .lb-handle.dragging { cursor: grabbing; transform: scale(1.15); z-index: 2; }
+/* 区切りのつまみ: A / B の丸いつまみと区別できる、白い縦長のカプセル */
+.lb-mhandle {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 30px;
+  margin: -15px 0 0 -6px;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(0, 0, 0, 0.15);
+  cursor: ew-resize;
+  touch-action: none;
+}
+/* 指で触りやすいよう、見た目より広い範囲でつかめるようにする */
+.lb-mhandle::before { content: ""; position: absolute; inset: -8px -10px; }
+.lb-mhandle.dragging { z-index: 2; transform: scale(1.15); }
 /* ドラッグを始めた位置に残す影 */
 .lb-ghost { opacity: 0.3; box-shadow: none; pointer-events: none; }
+.lb-ghost.marker { width: 12px; height: 30px; margin: -15px 0 0 -6px; background: #fff; border-radius: 6px; }
 /* ドラッグ中の吹き出し: つまみの上に、時刻と元の位置からの差を出す */
 .lb-tip {
   position: absolute;

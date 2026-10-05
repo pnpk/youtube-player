@@ -1,6 +1,6 @@
 // A-B ループの中の区切り。区切り(markers)は A と B の間の秒数を時刻順に並べた配列。
 // 区切りで分けた小さな区間を 1 つ選んでループできる(選んでいないときは A-B 全体)。
-import { gapOk, round2 } from './loop.js';
+import { MIN_GAP, gapOk, round2 } from './loop.js';
 
 export const MAX_MARKERS = 9;
 export const SECTION_COLORS = 10;
@@ -31,6 +31,15 @@ export function placeMarker(range, markers, time, duration) {
   }
   const next = addMarker(target, markers, time);
   return next ? { range: target, markers: next } : null;
+}
+
+// ループバーで区切りをドラッグしたときの位置(0.1 秒単位)。隣の区切りや A / B から最低間隔以上離れた範囲に収める
+export function moveMarker(range, markers, index, time) {
+  if (!complete(range) || index < 0 || index >= markers.length) return markers;
+  const lower = round2((index === 0 ? range.a : markers[index - 1]) + MIN_GAP);
+  const upper = round2((index === markers.length - 1 ? range.b : markers[index + 1]) - MIN_GAP);
+  const t = round2(Math.min(upper, Math.max(lower, Math.round(time * 10) / 10)));
+  return markers.map((m, i) => (i === index ? t : m));
 }
 
 export function removeNearestMarker(markers, time) {
