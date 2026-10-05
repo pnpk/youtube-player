@@ -35,6 +35,10 @@ const JUMP_GUARD_MS = 300;
 const TOAST_MS = 3000;
 const EMBED_BLOCKED = 'この動画は埋め込み再生が許可されていません(YouTube アプリで見てください)';
 const ERROR_MESSAGES = { 100: '動画が見つかりません', 101: EMBED_BLOCKED, 150: EMBED_BLOCKED };
+// これより大きいファイルは波形を作らない(iPad で解析中にメモリが足りなくなるのを避ける)
+const WAVE_MAX_BYTES = 200 * 1024 * 1024;
+// 波形を解析中のファイル。解析中にタブが落ちたとき、次の起動で同じファイルを解析し直さないための目印
+const DECODING_KEY = 'yt-practice-player:decoding';
 const YT_FAILED = 'YouTube のプレーヤーを読み込めませんでした。ネット接続を確認して、ページを開き直してください';
 
 const $ = (id) => document.getElementById(id);
@@ -290,8 +294,14 @@ function renderWave(time, duration) {
   $('wave-duration').textContent = duration ? formatClock(duration) : '';
   $('wave-head').hidden = !duration;
   if (duration) $('wave-head').style.left = `${(time / duration) * 100}%`;
-  if (!peaks || !duration) return;
   const canvas = $('wave-canvas');
+  if (!peaks || !duration) {
+    if (waveKey !== 'empty') {
+      canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+      waveKey = 'empty';
+    }
+    return;
+  }
   const range = loopDrag ? loopDrag.range : state.range;
   const key = [peaksVersion, canvas.clientWidth, canvas.clientHeight, duration, range.a, range.b, state.selected, state.markers.join(), loopDrag != null, isDark()].join('|');
   if (key === waveKey) return;
@@ -448,10 +458,10 @@ function activate(kind) {
   player = next;
   $('video').classList.toggle('file-mode', kind === 'file');
   $('wave-view').hidden = kind !== 'file';
-  if (kind !== 'file') {
-    peaks = null;
-    peaksVersion++;
-  }
+  // 開くものが変わるたびに、前の波形を消す(新しい波形は loadPeaks が用意する)
+  peaks = null;
+  peaksVersion++;
+  setWaveStatus(null);
   setPlayingUi(false);
 }
 
@@ -535,11 +545,19 @@ async function loadPeaks(id, blob) {
     result = null;
   }
   if (!result) {
+    const crashedBefore = readDecoding() === id;
+    if (crashedBefore || blob.size > WAVE_MAX_BYTES) {
+      if (state.id === id) setWaveStatus('波形を表示できません');
+      return;
+    }
+    writeDecoding(id);
     try {
       result = await decodePeaks(blob);
     } catch {
       if (state.id === id) setWaveStatus('波形を表示できません');
       return;
+    } finally {
+      writeDecoding(null);
     }
     putPeaks(id, result).catch(() => {});
   }
@@ -548,6 +566,23 @@ async function loadPeaks(id, blob) {
   peaksVersion++;
   setWaveStatus(null);
   renderPosition();
+}
+
+function readDecoding() {
+  try {
+    return storage?.getItem(DECODING_KEY) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDecoding(id) {
+  try {
+    if (id) storage?.setItem(DECODING_KEY, id);
+    else storage?.removeItem(DECODING_KEY);
+  } catch {
+    // 目印を残せなくても練習の邪魔はしない
+  }
 }
 
 // 起動時に、履歴に記録がない保存データを消す
@@ -559,6 +594,14 @@ async function removeOrphanFiles() {
   } catch {
     // 保存先が使えないときは何もしない
   }
+}
+
+// 何も開いていない状態にする(履歴の記録はそのまま)
+function clearCurrent() {
+  applyEntry({ kind: 'youtube', id: null, title: '', a: null, b: null, rate: DEFAULT_RATE, markers: [] });
+  $('url').value = '';
+  if (ytPlayer) activate('youtube');
+  renderAll();
 }
 
 function openFromHistory(id) {
@@ -939,7 +982,12 @@ async function main() {
   bindControls();
   setInterval(tick, TICK_MS);
   removeOrphanFiles();
-  if (state.kind === 'file') openStoredFile(state.id); // 復元時は自動再生しない
+  if (state.kind === 'file') {
+    // 復元時は自動再生しない。見つからなければ、ボタンで履歴の設定を上書きしないよう、何も開いていない状態に戻す
+    openStoredFile(state.id).then((ok) => {
+      if (!ok) clearCurrent();
+    });
+  }
 
   try {
     ytPlayer = await createPlayer('player', {

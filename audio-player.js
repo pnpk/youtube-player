@@ -17,24 +17,42 @@ export function createAudioPlayer({ onStateChange }) {
   audio.addEventListener('ended', () => onStateChange(PLAYER_STATE.ENDED));
 
   return {
+    // 読み込めなかったときは、それまでのファイル(と再生位置)に戻してから reject する
     load(blob) {
       audio.pause();
-      if (url) URL.revokeObjectURL(url);
-      url = URL.createObjectURL(blob);
-      audio.src = url;
-      return new Promise((resolve, reject) => {
-        const finish = (ok) => {
-          audio.removeEventListener('loadedmetadata', onLoaded);
-          audio.removeEventListener('error', onError);
-          if (ok) resolve();
-          else reject(new Error('この音声は再生できません'));
-        };
-        const onLoaded = () => finish(true);
-        const onError = () => finish(false);
-        audio.addEventListener('loadedmetadata', onLoaded);
-        audio.addEventListener('error', onError);
-        audio.load();
-      });
+      const previous = url ? { url, time: audio.currentTime } : null;
+      const next = URL.createObjectURL(blob);
+      const loadSource = (src) =>
+        new Promise((resolve, reject) => {
+          const finish = (ok) => {
+            audio.removeEventListener('loadedmetadata', onLoaded);
+            audio.removeEventListener('error', onError);
+            if (ok) resolve();
+            else reject(new Error('この音声は再生できません'));
+          };
+          const onLoaded = () => finish(true);
+          const onError = () => finish(false);
+          audio.addEventListener('loadedmetadata', onLoaded);
+          audio.addEventListener('error', onError);
+          audio.src = src;
+          audio.load();
+        });
+      return loadSource(next).then(
+        () => {
+          if (previous) URL.revokeObjectURL(previous.url);
+          url = next;
+        },
+        async (error) => {
+          URL.revokeObjectURL(next);
+          if (previous) {
+            await loadSource(previous.url).catch(() => {});
+            audio.currentTime = previous.time;
+          } else {
+            audio.removeAttribute('src');
+          }
+          throw error;
+        },
+      );
     },
     play: () => audio.play().catch(() => {}),
     pause: () => audio.pause(),

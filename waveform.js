@@ -1,5 +1,7 @@
 // 音声ファイルの波形。計算(computePeaks)は純粋な関数で、解析と描画はブラウザで行う。
 export const DEFAULT_BUCKETS = 2000;
+// 波形の解析はこのサンプリングレート(1 チャンネル)で行う。長い曲でもメモリを抑えるため(波形の形を見るには十分)
+const DECODE_SAMPLE_RATE = 8000;
 
 // 音声データを buckets 個に分け、各区間の全チャンネルの振幅の最大値(絶対値)を、全体の最大値で割った 0〜1 の値にする
 export function computePeaks(channels, buckets) {
@@ -24,15 +26,11 @@ export function computePeaks(channels, buckets) {
 
 // 音声ファイルを解析して波形の値を作る(ブラウザ専用)
 export async function decodePeaks(blob, buckets = DEFAULT_BUCKETS) {
-  const Context = window.AudioContext || window.webkitAudioContext;
-  const context = new Context();
-  try {
-    const buffer = await context.decodeAudioData(await blob.arrayBuffer());
-    const channels = Array.from({ length: buffer.numberOfChannels }, (_, i) => buffer.getChannelData(i));
-    return computePeaks(channels, buckets);
-  } finally {
-    context.close?.();
-  }
+  const Offline = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const context = new Offline(1, 1, DECODE_SAMPLE_RATE);
+  const buffer = await context.decodeAudioData(await blob.arrayBuffer());
+  const channels = Array.from({ length: buffer.numberOfChannels }, (_, i) => buffer.getChannelData(i));
+  return computePeaks(channels, buckets);
 }
 
 // from〜to 秒の範囲の波形を、縦棒の並びで canvas に描く(ブラウザ専用)。棒の色は colorAt(その棒の中央の秒) で決める

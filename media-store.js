@@ -55,8 +55,20 @@ async function store(name, mode = 'readonly') {
   return db.transaction(name, mode).objectStore(name);
 }
 
+// 書き込みは、トランザクションの完了まで待つ(容量不足などは完了の直前に失敗として届くため)
+async function write(name, record) {
+  const db = await openDb();
+  const tx = db.transaction(name, 'readwrite');
+  tx.objectStore(name).put(record);
+  await new Promise((resolve, reject) => {
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error ?? new Error('保存できませんでした'));
+  });
+}
+
 export async function putFile(record) {
-  await done((await store('files', 'readwrite')).put(record));
+  await write('files', record);
 }
 
 export async function getFile(id) {
@@ -69,7 +81,7 @@ export async function listFiles() {
 }
 
 export async function putPeaks(id, peaks) {
-  await done((await store('peaks', 'readwrite')).put({ id, peaks }));
+  await write('peaks', { id, peaks });
 }
 
 export async function getPeaks(id) {
