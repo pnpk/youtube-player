@@ -6,7 +6,17 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 // app.js から読み込まれるモジュール(import map で版番号を付ける)
-export const MODULES = ['history.js', 'keys.js', 'loop.js', 'player.js', 'sections.js', 'storage.js'];
+export const MODULES = [
+  'audio-player.js',
+  'history.js',
+  'keys.js',
+  'loop.js',
+  'media-store.js',
+  'player.js',
+  'sections.js',
+  'storage.js',
+  'waveform.js',
+];
 const VERSIONED = ['app.js', ...MODULES, 'style.css'];
 const root = new URL('..', import.meta.url);
 
