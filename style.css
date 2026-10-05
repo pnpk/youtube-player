@@ -24,6 +24,8 @@
   --sec-8: #ffcc00;
   --sec-9: #ff3b30;
   --sec-10: #00c7be;
+  --wave-dim: rgba(60, 60, 67, 0.22);
+  --wave-strong: rgba(60, 60, 67, 0.4);
   --gap: 10px;
   --row: 52px;
   --radius: 12px;
@@ -53,6 +55,8 @@
     --sec-8: #ffd60a;
     --sec-9: #ff453a;
     --sec-10: #63e6e2;
+    --wave-dim: rgba(235, 235, 245, 0.2);
+    --wave-strong: rgba(235, 235, 245, 0.4);
   }
 }
 
@@ -140,6 +144,43 @@ svg { display: block; }
 
 .video { width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #000; border-radius: var(--radius); }
 .video iframe, #player { display: block; width: 100%; height: 100%; }
+/* 音声ファイルのときは YouTube の枠を隠し、曲全体の波形を出す */
+.video { position: relative; }
+.video.file-mode #player { display: none; }
+.wave-view { position: absolute; inset: 0; background: var(--group); }
+.wave-plot { position: absolute; inset: 14px 14px 44px; touch-action: none; cursor: pointer; }
+.wave-plot canvas { display: block; width: 100%; height: 100%; }
+.wave-head { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--label); border-radius: 1px; pointer-events: none; }
+.wave-status { position: absolute; inset: 0 0 30px; display: grid; place-items: center; margin: 0; font-size: 15px; color: var(--secondary); pointer-events: none; }
+.wave-info {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  left: 16px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.wave-info span:first-child { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.wave-info span:last-child { color: var(--secondary); }
+/* ループバーの背景の拡大波形 */
+.lb-wave { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* PC でファイルをドラッグしている間の表示 */
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 14%, transparent);
+  border: 3px dashed var(--tint);
+  pointer-events: none;
+}
 
 /* 再生バー: iOS のスライダーの形。指でスライドできるよう、上では画面をスクロールさせない */
 .scrub { padding: 10px 16px 8px; }

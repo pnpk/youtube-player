@@ -21,7 +21,10 @@ import {
   stepRate,
 } from './loop.js';
 import { PLAYER_STATE, createPlayer, isPlayingState } from './player.js';
-import { openVideo, removeEntry, updateEntry } from './history.js';
+import { createAudioPlayer } from './audio-player.js';
+import { fileId, openMedia, removeEntry, titleFromFileName, updateEntry } from './history.js';
+import { STORE_LIMIT_BYTES, deleteMedia, findOrphans, getFile, getPeaks, listFiles, pickEvictions, putFile, putPeaks } from './media-store.js';
+import { decodePeaks, drawWaveform } from './waveform.js';
 import { MAX_MARKERS, findSection, loopRange, placeMarker, pruneMarkers, removeNearestMarker, restartPoint, sectionColor, sectionsOf } from './sections.js';
 import { loadHistory, saveHistory } from './storage.js';
 import { commandForKey } from './keys.js';
@@ -32,6 +35,7 @@ const JUMP_GUARD_MS = 300;
 const TOAST_MS = 3000;
 const EMBED_BLOCKED = 'この動画は埋め込み再生が許可されていません(YouTube アプリで見てください)';
 const ERROR_MESSAGES = { 100: '動画が見つかりません', 101: EMBED_BLOCKED, 150: EMBED_BLOCKED };
+const YT_FAILED = 'YouTube のプレーヤーを読み込めませんでした。ネット接続を確認して、ページを開き直してください';
 
 const $ = (id) => document.getElementById(id);
 const storage = (() => {
@@ -42,10 +46,18 @@ const storage = (() => {
   }
 })();
 
-// selected: ループしている区間の番号(null なら A-B 全体)
-const state = { videoId: null, range: EMPTY_RANGE, rate: DEFAULT_RATE, markers: [], selected: null };
+// kind: 'youtube' | 'file'、id: 動画 ID かファイルの識別子。selected: ループしている区間の番号(null なら A-B 全体)
+const state = { kind: 'youtube', id: null, range: EMPTY_RANGE, rate: DEFAULT_RATE, markers: [], selected: null };
 let history = [];
-let player = null;
+let ytPlayer = null; // YouTube(読み込みに失敗したら null のまま)
+let ytFailed = false;
+let audioPlayer = null; // 音声ファイル
+let player = null; // 今使っているほう
+// 今の音声ファイルの波形(0〜1 の配列)。YouTube のときや計算前は null。peaksVersion は描き直しの判定用
+let peaks = null;
+let peaksVersion = 0;
+let waveKey = '';
+let lbWaveKey = '';
 // 再生バーを指でスライドしている間の位置(秒)。スライドしていないときは null
 let dragTime = null;
 // ループバーで A / B をドラッグしている間の、仮の A-B と表示範囲。ドラッグしていないときは null
@@ -89,9 +101,9 @@ function formatDate(ms) {
 
 // 今の動画の A/B・速度・区切りを、履歴のその動画の項目に上書き保存する
 function persist() {
-  const { videoId, range, rate, markers } = state;
-  if (!videoId) return;
-  history = updateEntry(history, videoId, { a: range.a, b: range.b, rate, markers });
+  const { id, range, rate, markers } = state;
+  if (!id) return;
+  history = updateEntry(history, id, { a: range.a, b: range.b, rate, markers });
   saveHistory(storage, history);
 }
 
@@ -107,18 +119,18 @@ function renderHistory() {
     const li = document.createElement('li');
     const open = document.createElement('button');
     open.className = 'history-item';
-    open.dataset.videoId = entry.videoId;
+    open.dataset.id = entry.id;
     const title = document.createElement('span');
     title.className = 'history-title';
-    title.textContent = entry.title || entry.videoId;
+    title.textContent = `${entry.kind === 'file' ? '♪ ' : ''}${entry.title || entry.id}`;
     const meta = document.createElement('span');
     meta.className = 'history-meta';
     meta.textContent = `${formatDate(entry.openedAt)} ・ ${describeEntry(entry)}`;
     open.append(title, meta);
     const remove = document.createElement('button');
     remove.className = 'history-remove';
-    remove.dataset.remove = entry.videoId;
-    remove.setAttribute('aria-label', `${entry.title || entry.videoId} を履歴から消す`);
+    remove.dataset.remove = entry.id;
+    remove.setAttribute('aria-label', `${entry.title || entry.id} を履歴から消す`);
     remove.textContent = '削除';
     li.append(open, remove);
     return li;
@@ -158,7 +170,7 @@ function activeRange() {
 function renderSections() {
   const sections = sectionsOf(state.range, state.markers);
   // A/B が未設定でも押せる(A は動画の先頭、B は動画の最後になる)
-  $('marker-add').disabled = !state.videoId;
+  $('marker-add').disabled = !state.id;
   $('marker-remove').disabled = state.markers.length === 0;
   const chips = sections.length > 1 ? [null, ...sections.map((_, i) => i)] : [];
   $('section-chips').replaceChildren(
@@ -196,6 +208,7 @@ function renderPosition() {
   const time = dragTime ?? (player ? player.time() : 0);
   $('time').textContent = formatTime(time);
   $('duration').textContent = formatClock(duration);
+  renderWave(time, duration);
   const head = $('seek-head');
   const rangeEl = $('seek-range');
   const sectionEl = $('seek-section');
@@ -244,9 +257,63 @@ function renderLoopbar(time, duration) {
   $('lb-b').style.left = percent(range.b);
   $('lb-head').style.left = percent(time);
   $('lb-head').hidden = time < view.start || time > view.end;
+  renderLoopbarWave(view, duration);
   renderBands(range, percent);
   renderTicks(view);
   renderDragFeedback(range, percent);
+}
+
+// CSS 変数(区間の色など)を、canvas で使える色の文字列にする
+function cssColor(value) {
+  const match = /^var\((--[\w-]+)\)$/.exec(value);
+  return match ? getComputedStyle(document.documentElement).getPropertyValue(match[1]).trim() : value;
+}
+
+const isDark = () => matchMedia('(prefers-color-scheme: dark)').matches;
+
+// 大きな波形の棒の色: 選んでいる区間 → その区間の色、A-B の中 → アクセント色、外 → 薄い灰色
+function waveColorAt(range) {
+  const tint = cssColor('var(--tint)');
+  const dim = cssColor('var(--wave-dim)');
+  const section = state.selected == null || loopDrag ? null : activeRange();
+  const sectionTint = section ? cssColor(sectionColor(state.selected)) : null;
+  return (t) => {
+    if (section && t >= section.a && t <= section.b) return sectionTint;
+    if (range.a != null && range.b != null && t >= range.a && t <= range.b) return tint;
+    return dim;
+  };
+}
+
+// 音声ファイルのときだけ: 動画の枠のところに曲全体の波形を描く。色が変わるときだけ描き直す
+function renderWave(time, duration) {
+  if (state.kind !== 'file') return;
+  $('wave-duration').textContent = duration ? formatClock(duration) : '';
+  $('wave-head').hidden = !duration;
+  if (duration) $('wave-head').style.left = `${(time / duration) * 100}%`;
+  if (!peaks || !duration) return;
+  const canvas = $('wave-canvas');
+  const range = loopDrag ? loopDrag.range : state.range;
+  const key = [peaksVersion, canvas.clientWidth, canvas.clientHeight, duration, range.a, range.b, state.selected, state.markers.join(), loopDrag != null, isDark()].join('|');
+  if (key === waveKey) return;
+  waveKey = key;
+  drawWaveform(canvas, peaks, { from: 0, to: duration, duration, colorAt: waveColorAt(range) });
+}
+
+// ループバーの背景に、表示範囲の波形を拡大して描く
+function renderLoopbarWave(view, duration) {
+  const canvas = $('lb-wave');
+  canvas.hidden = state.kind !== 'file' || !peaks;
+  if (canvas.hidden) return;
+  const key = [peaksVersion, canvas.clientWidth, canvas.clientHeight, view.start, view.end, isDark()].join('|');
+  if (key === lbWaveKey) return;
+  lbWaveKey = key;
+  const color = cssColor('var(--wave-strong)');
+  drawWaveform(canvas, peaks, { from: view.start, to: view.end, duration, colorAt: () => color, barWidth: 2, gap: 1 });
+}
+
+function setWaveStatus(text) {
+  $('wave-status').hidden = !text;
+  $('wave-status').textContent = text ?? '';
 }
 
 // ループバーの区間: 区間ごとの色で塗り分け、帯の中に番号を出す。選んでいる区間だけ濃くする
@@ -342,43 +409,179 @@ function jumpToLoopStart() {
 }
 
 function applyEntry(entry) {
-  state.videoId = entry.videoId;
+  state.kind = entry.kind;
+  state.id = entry.id;
   state.range = { a: entry.a, b: entry.b };
   state.rate = entry.rate;
   state.markers = entry.markers;
   state.selected = null; // どの区間を選んでいたかは保存しない
-  $('url').value = `https://youtu.be/${entry.videoId}`;
+  $('url').value = entry.kind === 'youtube' ? `https://youtu.be/${entry.id}` : '';
+  $('wave-title').textContent = entry.kind === 'file' ? entry.title : '';
 }
 
-function loadVideo(videoId) {
-  const opened = openVideo(history, videoId, Date.now());
-  history = opened.history;
-  saveHistory(storage, history);
-  // 履歴にある動画なら前回の A/B・速度・区切りを戻す。初めての動画なら初期設定(前の動画の A/B は持ち込まない)
-  applyEntry(opened.entry);
-  player.load(videoId);
-  player.setRate(state.rate);
+function renderAll() {
   renderControls();
   renderPosition();
   renderHistory();
 }
 
+// 開いたものを履歴の先頭に入れ、前回の A/B・速度・区切りを戻す(初めてなら初期設定)。押し出された音声ファイルの保存データは消す
+function commitOpened(ref) {
+  const opened = openMedia(history, ref, Date.now());
+  history = opened.history;
+  saveHistory(storage, history);
+  for (const dropped of opened.dropped) {
+    if (dropped.kind === 'file') deleteMedia(dropped.id).catch(() => {});
+  }
+  applyEntry(opened.entry);
+}
+
+function setPlayingUi(playing) {
+  $('play').classList.toggle('playing', playing);
+  $('play').setAttribute('aria-label', playing ? '一時停止' : '再生');
+}
+
+// 使うプレーヤーと表示(YouTube の枠 / 曲全体の波形)を切り替える。切り替える前のほうは止める
+function activate(kind) {
+  const next = kind === 'file' ? audioPlayer : (ytPlayer ?? audioPlayer);
+  if (player && player !== next) player.pause();
+  player = next;
+  $('video').classList.toggle('file-mode', kind === 'file');
+  $('wave-view').hidden = kind !== 'file';
+  if (kind !== 'file') {
+    peaks = null;
+    peaksVersion++;
+  }
+  setPlayingUi(false);
+}
+
+function openYouTube(videoId) {
+  if (!ytPlayer) {
+    showToast(ytFailed ? YT_FAILED : 'プレーヤーを準備中です。少し待ってからもう一度押してください');
+    return;
+  }
+  activate('youtube');
+  commitOpened({ kind: 'youtube', id: videoId });
+  ytPlayer.load(videoId);
+  ytPlayer.setRate(state.rate);
+  renderAll();
+}
+
+// 音声ファイルを開く。blob は選んだ / ドロップした File か、保存データの Blob。save なら保存もする
+async function openAudio({ id, title, blob, save }) {
+  try {
+    await audioPlayer.load(blob);
+  } catch {
+    showToast('このファイルは再生できません');
+    return false;
+  }
+  activate('file');
+  commitOpened({ kind: 'file', id, title });
+  audioPlayer.setRate(state.rate);
+  renderAll();
+  if (save) storeFile(id, blob, title);
+  else touchStoredFile(id);
+  loadPeaks(id, blob);
+  return true;
+}
+
+function openPickedFile(file) {
+  return openAudio({ id: fileId(file), title: titleFromFileName(file.name), blob: file, save: true });
+}
+
+async function openStoredFile(id) {
+  let record = null;
+  try {
+    record = await getFile(id);
+  } catch {
+    record = null;
+  }
+  if (!record) {
+    showToast('ファイルが見つかりません。♪ からもう一度選んでください');
+    return false;
+  }
+  return openAudio({ id, title: titleFromFileName(record.name), blob: record.blob, save: false });
+}
+
+// 保存して、合計が上限を超えたら古いものから消す(履歴の記録は残す)
+async function storeFile(id, blob, title) {
+  try {
+    await putFile({ id, name: blob.name ?? title, type: blob.type, size: blob.size, blob, lastOpenedAt: Date.now() });
+    const evict = pickEvictions(await listFiles(), STORE_LIMIT_BYTES, id);
+    await Promise.all(evict.map((x) => deleteMedia(x)));
+  } catch {
+    showToast('ブラウザに保存できなかったため、次回は選び直しが必要です');
+  }
+}
+
+async function touchStoredFile(id) {
+  try {
+    const record = await getFile(id);
+    if (record) await putFile({ ...record, lastOpenedAt: Date.now() });
+  } catch {
+    // 開いた日時の更新に失敗しても練習の邪魔はしない
+  }
+}
+
+// 波形: 保存済みならそれを使い、なければ計算して保存する。計算中に別のものを開いたら、結果は使わない
+async function loadPeaks(id, blob) {
+  peaks = null;
+  peaksVersion++;
+  setWaveStatus('波形を作成中…');
+  let result = null;
+  try {
+    result = await getPeaks(id);
+  } catch {
+    result = null;
+  }
+  if (!result) {
+    try {
+      result = await decodePeaks(blob);
+    } catch {
+      if (state.id === id) setWaveStatus('波形を表示できません');
+      return;
+    }
+    putPeaks(id, result).catch(() => {});
+  }
+  if (state.id !== id) return;
+  peaks = result;
+  peaksVersion++;
+  setWaveStatus(null);
+  renderPosition();
+}
+
+// 起動時に、履歴に記録がない保存データを消す
+async function removeOrphanFiles() {
+  try {
+    const stored = (await listFiles()).map((f) => f.id);
+    const inHistory = history.filter((e) => e.kind === 'file').map((e) => e.id);
+    await Promise.all(findOrphans(stored, inHistory).map((id) => deleteMedia(id)));
+  } catch {
+    // 保存先が使えないときは何もしない
+  }
+}
+
+function openFromHistory(id) {
+  const entry = history.find((e) => e.id === id);
+  if (!entry) return;
+  if (entry.kind === 'file') openStoredFile(id);
+  else openYouTube(id);
+}
+
 // タイトルは読み込み後でないと取れないので、プレーヤーの状態が変わるたびに取りに行く
 function captureTitle() {
-  if (!player || !state.videoId) return;
-  const title = player.title(state.videoId);
-  const entry = history.find((e) => e.videoId === state.videoId);
+  if (!ytPlayer || state.kind !== 'youtube' || !state.id) return;
+  const title = ytPlayer.title(state.id);
+  const entry = history.find((e) => e.id === state.id);
   if (!title || !entry || entry.title === title) return;
-  history = updateEntry(history, state.videoId, { title });
+  history = updateEntry(history, state.id, { title });
   saveHistory(storage, history);
   renderHistory();
 }
 
 function handleStateChange(playerState) {
   captureTitle();
-  const playing = isPlayingState(playerState);
-  $('play').classList.toggle('playing', playing);
-  $('play').setAttribute('aria-label', playing ? '一時停止' : '再生');
+  setPlayingUi(isPlayingState(playerState));
   // 読み込み直後に設定した速度が効かないことがあるので、再生が始まるたびに当て直す
   if (playerState === PLAYER_STATE.PLAYING) player.setRate(state.rate);
   // B が動画の終端付近だと、監視より先に動画が終わるので、ここでもループさせる
@@ -394,17 +597,13 @@ function handleError(code) {
 
 function handleLoadSubmit(e) {
   e.preventDefault(); // プレーヤーの準備前でも、フォーム送信でページを再読み込みさせない
-  if (!player) {
-    showToast('プレーヤーを準備中です。少し待ってからもう一度押してください');
-    return;
-  }
   const videoId = parseVideoId($('url').value);
   if (!videoId) {
     showToast('URL を確認してください');
     return;
   }
   $('url').blur();
-  loadVideo(videoId);
+  openYouTube(videoId);
 }
 
 // --- ボタンとキーボードの両方から呼ぶ操作 ---
@@ -426,12 +625,12 @@ function jumpToA() {
 }
 
 function setAHere() {
-  if (!state.videoId) return;
+  if (!state.id) return;
   updateRange(setA(state.range, player.time()));
 }
 
 function setBHere() {
-  if (!state.videoId) return;
+  if (!state.id) return;
   const next = setB(state.range, player.time());
   if (!next) {
     showToast('A より後ろで押してください');
@@ -442,7 +641,7 @@ function setBHere() {
 }
 
 function addMarkerHere() {
-  if (!state.videoId) return;
+  if (!state.id) return;
   const placed = placeMarker(state.range, state.markers, player.time(), player.duration());
   if (placed) {
     setLoop(placed.range, placed.markers);
@@ -483,15 +682,18 @@ function bindControls() {
   $('history-list').addEventListener('click', (e) => {
     const remove = e.target.closest('[data-remove]');
     if (remove) {
-      history = removeEntry(history, remove.dataset.remove);
+      const id = remove.dataset.remove;
+      const entry = history.find((x) => x.id === id);
+      history = removeEntry(history, id);
       saveHistory(storage, history);
+      if (entry?.kind === 'file') deleteMedia(id).catch(() => {}); // 保存した中身と波形も消す
       renderHistory();
       return;
     }
-    const item = e.target.closest('[data-video-id]');
+    const item = e.target.closest('[data-id]');
     if (item) {
       $('history').hidden = true;
-      loadVideo(item.dataset.videoId);
+      openFromHistory(item.dataset.id);
     }
   });
 
@@ -522,9 +724,37 @@ function bindControls() {
     selectSection(chip.dataset.section === '' ? null : Number(chip.dataset.section));
   });
 
+  $('file-open').addEventListener('click', () => $('file-input').click());
+  $('file-input').addEventListener('change', () => {
+    const file = $('file-input').files[0];
+    $('file-input').value = ''; // 同じファイルをもう一度選んでも change が起きるように
+    if (file) openPickedFile(file);
+  });
+
   bindSeekDrag();
   bindLoopbar();
   bindKeyboard();
+  bindDrop();
+}
+
+// PC: ファイルをページにドラッグ & ドロップして開く
+function bindDrop() {
+  const hasFiles = (e) => [...(e.dataTransfer?.types ?? [])].includes('Files');
+  document.addEventListener('dragover', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    $('drop-overlay').hidden = false;
+  });
+  document.addEventListener('dragleave', (e) => {
+    if (e.relatedTarget == null) $('drop-overlay').hidden = true; // ウィンドウの外に出たとき
+  });
+  document.addEventListener('drop', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    $('drop-overlay').hidden = true;
+    const file = e.dataTransfer.files[0];
+    if (file) openPickedFile(file);
+  });
 }
 
 // ループバー: A / B のつまみのドラッグと、バーのタップでの移動
@@ -563,32 +793,10 @@ function bindLoopbar() {
     handle.addEventListener('pointerup', finish);
     handle.addEventListener('pointercancel', finish);
   }
-  // バー(つまみ以外)を指でスライドすると、再生位置の線と時刻だけが指についてきて、離した位置へ移動する(タップでも移動)。
-  // 移動先は A-B の範囲に収める
-  let scrubView = null;
-  const scrubTimeAt = (clientX) => clampToLoop(timeAt(clientX, scrubView), state.range);
-  track.addEventListener('pointerdown', (e) => {
-    scrubView = loopWindow(state.range, player.duration());
-    if (!scrubView) return;
-    track.setPointerCapture(e.pointerId);
-    dragTime = scrubTimeAt(e.clientX);
-    renderPosition();
-  });
-  track.addEventListener('pointermove', (e) => {
-    if (!scrubView) return;
-    dragTime = scrubTimeAt(e.clientX);
-    renderPosition();
-  });
-  track.addEventListener('pointerup', () => {
-    if (!scrubView) return;
-    player.seek(dragTime);
-    lastJumpAt = performance.now();
-    dragTime = null;
-    scrubView = null;
-  });
-  track.addEventListener('pointercancel', () => {
-    dragTime = null;
-    scrubView = null;
+  // バー(つまみ以外)をタップ・スライドすると、その位置へ移動する。移動先は A-B の範囲に収める
+  bindScrub(track, (clientX) => {
+    const view = loopWindow(state.range, player.duration());
+    return view ? clampToLoop(timeAt(clientX, view), state.range) : null;
   });
 }
 
@@ -647,33 +855,46 @@ function bindKeyboard() {
   });
 }
 
-// 再生バー: 指を置いてスライドしている間は表示だけ動かし、離した位置へ移動する(タップでも移動できる)
-function bindSeekDrag() {
-  const seek = $('seek');
-  const timeAt = (clientX) => {
-    const rect = seek.getBoundingClientRect();
-    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    return ratio * player.duration();
-  };
-  seek.addEventListener('pointerdown', (e) => {
-    if (!player.duration()) return;
-    seek.setPointerCapture(e.pointerId);
-    dragTime = timeAt(e.clientX);
+// 指を置いてスライドしている間は再生位置の表示だけ動かし、離した位置へ移動する(タップでも移動)。
+// timeAt(clientX) は移動先の秒。null を返すとき(動画の長さが不明など)は何もしない
+function bindScrub(element, timeAt) {
+  element.addEventListener('pointerdown', (e) => {
+    const t = timeAt(e.clientX);
+    if (t == null) return;
+    element.setPointerCapture(e.pointerId);
+    dragTime = t;
     renderPosition();
   });
-  seek.addEventListener('pointermove', (e) => {
+  element.addEventListener('pointermove', (e) => {
     if (dragTime == null) return;
-    dragTime = timeAt(e.clientX);
+    dragTime = timeAt(e.clientX) ?? dragTime;
     renderPosition();
   });
-  seek.addEventListener('pointerup', () => {
+  element.addEventListener('pointerup', () => {
     if (dragTime == null) return;
     player.seek(dragTime);
+    lastJumpAt = performance.now();
     dragTime = null;
   });
-  seek.addEventListener('pointercancel', () => {
+  element.addEventListener('pointercancel', () => {
     dragTime = null;
   });
+}
+
+// 動画(曲)全体を表すバーでの移動先
+function wholeTimeAt(element) {
+  return (clientX) => {
+    const duration = player.duration();
+    if (!duration) return null;
+    const rect = element.getBoundingClientRect();
+    return Math.min(1, Math.max(0, (clientX - rect.left) / rect.width)) * duration;
+  };
+}
+
+// 上の再生バーと、音声ファイルの大きな波形
+function bindSeekDrag() {
+  bindScrub($('seek'), wholeTimeAt($('seek')));
+  bindScrub($('wave-plot'), wholeTimeAt($('wave-plot')));
 }
 
 function tick() {
@@ -686,7 +907,14 @@ function tick() {
 async function main() {
   history = loadHistory(storage, Date.now());
   saveHistory(storage, history); // 旧形式から引き継いだときに、新しい形式で保存し直しておく
-  if (history[0]) applyEntry(history[0]); // 最後に開いた動画を、その設定ごと戻す
+  // 使っていないほうのプレーヤーの通知は無視する
+  audioPlayer = createAudioPlayer({
+    onStateChange: (s) => {
+      if (player === audioPlayer) handleStateChange(s);
+    },
+  });
+  player = audioPlayer;
+  if (history[0]) applyEntry(history[0]); // 最後に開いたものを、その設定ごと戻す
   renderControls();
   renderHistory();
   $('load-form').addEventListener('submit', handleLoadSubmit);
@@ -694,9 +922,9 @@ async function main() {
   $('url').addEventListener('paste', () => {
     setTimeout(() => {
       const videoId = parseVideoId($('url').value);
-      if (player && videoId) {
+      if (ytPlayer && videoId) {
         $('url').blur();
-        loadVideo(videoId);
+        openYouTube(videoId);
       }
     });
   });
@@ -708,16 +936,26 @@ async function main() {
     $('url').value = '';
     $('url').focus(); // すぐ貼り付けられるように
   });
+  bindControls();
+  setInterval(tick, TICK_MS);
+  removeOrphanFiles();
+  if (state.kind === 'file') openStoredFile(state.id); // 復元時は自動再生しない
 
   try {
-    player = await createPlayer('player', { onError: handleError, onStateChange: handleStateChange });
+    ytPlayer = await createPlayer('player', {
+      onError: handleError,
+      onStateChange: (s) => {
+        if (player === ytPlayer) handleStateChange(s);
+      },
+    });
   } catch {
-    showToast('プレーヤーを読み込めませんでした。ネット接続を確認して、ページを開き直してください');
+    ytFailed = true;
+    if (state.kind === 'youtube') showToast(YT_FAILED);
     return;
   }
-  bindControls();
-  if (state.videoId) player.load(state.videoId); // 復元時は自動再生しない
-  setInterval(tick, TICK_MS);
+  if (state.kind === 'youtube') {
+    activate('youtube');
+    if (state.id) ytPlayer.load(state.id); // 復元時は自動再生しない
+  }
 }
-
 main();
