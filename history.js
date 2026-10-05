@@ -15,6 +15,20 @@ export function fileId({ name, size, lastModified }) {
   return `f:${size}:${lastModified}:${name}`.slice(0, FILE_ID_MAX);
 }
 
+// 音声ファイルの識別子(f:<大きさ>:<更新日時>:<名前>)から大きさを取り出す。YouTube や不正な形なら null
+export function fileSizeOf(id) {
+  const match = /^f:(\d+):/.exec(id);
+  return match ? Number(match[1]) : null;
+}
+
+// 大きさの表示(500 B / 2 KB / 4.2 MB / 1.00 GB)
+export function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 ** 2) return `${Math.round(bytes / 1024)} KB`;
+  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+}
+
 export function titleFromFileName(name) {
   const dot = name.lastIndexOf('.');
   return (dot > 0 ? name.slice(0, dot) : name).slice(0, TITLE_MAX);

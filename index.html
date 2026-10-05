@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=4182cbd5d3">
+<link rel="stylesheet" href="style.css?v=47de6259d2">
 <title>練習プレーヤー</title>
 </head>
 <body>
@@ -40,6 +40,7 @@
       <button id="history-close" class="text-button strong" title="閉じる(Esc)">完了</button>
     </header>
     <p id="history-empty" class="history-empty">まだ履歴はありません</p>
+    <p id="history-usage" class="history-usage" hidden></p>
     <ul id="history-list" class="history-list group"></ul>
   </div>
 </div>
@@ -102,6 +103,7 @@
         <h3>履歴</h3>
         <ul class="group help-text">
           <li>開いた動画は新しい順に 30 件まで残ります。選ぶと、前回の A / B・速度・区切りも戻ります。</li>
+          <li>行の左のアイコンで種類が分かります(赤地に ▶ が YouTube、青地に ♪ が音声ファイル)。音声ファイルは大きさも出し、ブラウザに保存されていないものには「未保存」と出ます。</li>
           <li>設定は自動で保存されます。ページを開き直すと、最後の動画がその設定のまま戻ります。</li>
           <li>履歴はこの端末のブラウザの中だけに保存されます。</li>
         </ul>
@@ -259,18 +261,18 @@
 <script type="importmap">
 {
   "imports": {
-    "./audio-player.js": "./audio-player.js?v=4182cbd5d3",
-    "./history.js": "./history.js?v=4182cbd5d3",
-    "./keys.js": "./keys.js?v=4182cbd5d3",
-    "./loop.js": "./loop.js?v=4182cbd5d3",
-    "./media-store.js": "./media-store.js?v=4182cbd5d3",
-    "./player.js": "./player.js?v=4182cbd5d3",
-    "./sections.js": "./sections.js?v=4182cbd5d3",
-    "./storage.js": "./storage.js?v=4182cbd5d3",
-    "./waveform.js": "./waveform.js?v=4182cbd5d3"
+    "./audio-player.js": "./audio-player.js?v=47de6259d2",
+    "./history.js": "./history.js?v=47de6259d2",
+    "./keys.js": "./keys.js?v=47de6259d2",
+    "./loop.js": "./loop.js?v=47de6259d2",
+    "./media-store.js": "./media-store.js?v=47de6259d2",
+    "./player.js": "./player.js?v=47de6259d2",
+    "./sections.js": "./sections.js?v=47de6259d2",
+    "./storage.js": "./storage.js?v=47de6259d2",
+    "./waveform.js": "./waveform.js?v=47de6259d2"
   }
 }
 </script>
-<script type="module" src="app.js?v=4182cbd5d3"></script>
+<script type="module" src="app.js?v=47de6259d2"></script>
 </body>
 </html>

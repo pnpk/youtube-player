@@ -22,7 +22,7 @@ import {
 } from './loop.js';
 import { PLAYER_STATE, createPlayer, isPlayingState } from './player.js';
 import { createAudioPlayer } from './audio-player.js';
-import { fileId, openMedia, removeEntry, titleFromFileName, updateEntry } from './history.js';
+import { fileId, fileSizeOf, formatBytes, openMedia, removeEntry, titleFromFileName, updateEntry } from './history.js';
 import { STORE_LIMIT_BYTES, deleteMedia, findOrphans, getFile, getPeaks, listFiles, pickEvictions, putFile, putPeaks } from './media-store.js';
 import { decodePeaks, drawWaveform } from './waveform.js';
 import { MAX_MARKERS, findSection, loopRange, placeMarker, pruneMarkers, removeNearestMarker, restartPoint, sectionColor, sectionsOf } from './sections.js';
@@ -60,6 +60,8 @@ let player = null; // 今使っているほう
 // 今の音声ファイルの波形(0〜1 の配列)。YouTube のときや計算前は null。peaksVersion は描き直しの判定用
 let peaks = null;
 let peaksVersion = 0;
+// 履歴の画面で使う、ブラウザに保存中の音声ファイルの id の集まり。まだ調べていなければ null
+let storedFileIds = null;
 let waveKey = '';
 let lbWaveKey = '';
 // 再生バーを指でスライドしている間の位置(秒)。スライドしていないときは null
@@ -117,6 +119,42 @@ function describeEntry(entry) {
   return `${range} / ${Math.round(entry.rate * 100)}%${markers}`;
 }
 
+// 行の先頭の種類の表示: YouTube は「YouTube」、音声ファイルは「音声 4.2 MB」(保存されていなければ「・未保存」も)
+function describeKind(entry) {
+  if (entry.kind !== 'file') return 'YouTube';
+  const size = fileSizeOf(entry.id);
+  const missing = storedFileIds && !storedFileIds.has(entry.id) ? ' ・ 未保存' : '';
+  return `音声${size == null ? '' : ` ${formatBytes(size)}`}${missing}`;
+}
+
+// 種類のアイコン(YouTube は赤地に ▶、音声ファイルは青地に ♪)
+function kindIcon(kind) {
+  const icon = document.createElement('span');
+  icon.className = `history-kind ${kind === 'file' ? 'file' : 'youtube'}`;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttribute('href', kind === 'file' ? '#i-music' : '#i-play');
+  svg.append(use);
+  icon.append(svg);
+  icon.setAttribute('aria-label', kind === 'file' ? '音声ファイル' : 'YouTube');
+  return icon;
+}
+
+// 履歴を開いたときに、ブラウザに保存中の音声ファイルと合計の大きさを調べて表示する
+async function refreshStoredFiles() {
+  try {
+    const files = await listFiles();
+    storedFileIds = new Set(files.map((f) => f.id));
+    const total = files.reduce((sum, f) => sum + f.size, 0);
+    $('history-usage').textContent = `保存中の音声ファイル: ${formatBytes(total)} / ${formatBytes(STORE_LIMIT_BYTES)}`;
+    $('history-usage').hidden = files.length === 0;
+  } catch {
+    storedFileIds = null;
+    $('history-usage').hidden = true;
+  }
+  renderHistory();
+}
+
 function renderHistory() {
   // タイトルは外部(YouTube)から来る文字列なので、innerHTML は使わず textContent で入れる
   const items = history.map((entry) => {
@@ -124,13 +162,16 @@ function renderHistory() {
     const open = document.createElement('button');
     open.className = 'history-item';
     open.dataset.id = entry.id;
+    const text = document.createElement('span');
+    text.className = 'history-text';
     const title = document.createElement('span');
     title.className = 'history-title';
-    title.textContent = `${entry.kind === 'file' ? '♪ ' : ''}${entry.title || entry.id}`;
+    title.textContent = entry.title || entry.id;
     const meta = document.createElement('span');
     meta.className = 'history-meta';
-    meta.textContent = `${formatDate(entry.openedAt)} ・ ${describeEntry(entry)}`;
-    open.append(title, meta);
+    meta.textContent = `${describeKind(entry)} ・ ${formatDate(entry.openedAt)} ・ ${describeEntry(entry)}`;
+    text.append(title, meta);
+    open.append(kindIcon(entry.kind), text);
     const remove = document.createElement('button');
     remove.className = 'history-remove';
     remove.dataset.remove = entry.id;
@@ -709,6 +750,7 @@ function bindControls() {
   $('history-open').addEventListener('click', () => {
     renderHistory();
     $('history').hidden = false;
+    refreshStoredFiles();
   });
   $('history-close').addEventListener('click', () => {
     $('history').hidden = true;
@@ -729,7 +771,8 @@ function bindControls() {
       const entry = history.find((x) => x.id === id);
       history = removeEntry(history, id);
       saveHistory(storage, history);
-      if (entry?.kind === 'file') deleteMedia(id).catch(() => {}); // 保存した中身と波形も消す
+      // 保存した中身と波形も消し、合計の表示を更新する
+      if (entry?.kind === 'file') deleteMedia(id).catch(() => {}).finally(refreshStoredFiles);
       renderHistory();
       return;
     }

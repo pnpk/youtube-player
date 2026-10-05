@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   HISTORY_LIMIT,
   fileId,
+  fileSizeOf,
+  formatBytes,
   openMedia,
   removeEntry,
   sanitizeHistory,
@@ -127,4 +129,17 @@ test('sanitizeHistory: 同じものが重複していたら先にあるほうだ
   assert.equal(history.length, HISTORY_LIMIT);
   assert.equal(history[0].title, '新');
   assert.equal(history.filter((e) => e.id === ID1).length, 1);
+});
+
+test('fileSizeOf: 音声ファイルの識別子から大きさ(バイト)を取り出す。YouTube や不正な形なら null', () => {
+  assert.equal(fileSizeOf('f:4404019:99:song.mp3'), 4404019);
+  assert.equal(fileSizeOf(ID1), null);
+  assert.equal(fileSizeOf('f:abc:1:x.mp3'), null);
+});
+
+test('formatBytes: 大きさを読みやすい単位で表す', () => {
+  assert.equal(formatBytes(500), '500 B');
+  assert.equal(formatBytes(2048), '2 KB');
+  assert.equal(formatBytes(4404019), '4.2 MB');
+  assert.equal(formatBytes(1024 ** 3), '1.00 GB');
 });

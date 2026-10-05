@@ -457,13 +457,20 @@ svg { display: block; }
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
+  align-items: center;
+  gap: 12px;
   min-height: 60px;
   padding: 10px 16px;
   text-align: left;
 }
+.history-text { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+/* 種類のアイコン: YouTube は赤地に ▶、音声ファイルは青地に ♪ */
+.history-kind { flex: 0 0 auto; display: grid; place-items: center; width: 32px; height: 32px; color: #fff; border-radius: 8px; }
+.history-kind svg { width: 17px; height: 17px; }
+.history-kind.youtube { background: #ff0033; }
+.history-kind.youtube svg { width: 15px; height: 15px; margin-left: 2px; }
+.history-kind.file { background: var(--tint); }
+.history-usage { margin: 0 16px; font-size: 13px; color: var(--secondary); }
 .history-item:active { background: var(--fill); }
 .history-title { max-width: 100%; overflow: hidden; font-size: 17px; text-overflow: ellipsis; white-space: nowrap; }
 .history-meta { font-size: 13px; color: var(--secondary); }
